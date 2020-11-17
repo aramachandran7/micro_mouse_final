@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-1-g15f4949  Build Version: 1.6.7594.29634
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="mousebot">
+  <link
+    name="mousebot">
+    <inertial>
+      <origin
+        xyz="1.69255032905768E-09 0.0173039577751616 0.00604418655330792"
+        rpy="0 0 0" />
+      <mass
+        value="0.0546391744414753" />
+      <inertia
+        ixx="4.49581354911923E-05"
+        ixy="-3.7798477038513E-12"
+        ixz="1.43684696869088E-13"
+        iyy="3.06967720044607E-05"
+        iyz="7.02118461558997E-07"
+        izz="7.36394805788212E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/mousebot.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/mousebot_col.STL" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <link
+    name="FR_wheel">
+    <inertial>
+      <origin
+        xyz="0.008383 0 -6.9389E-18"
+        rpy="0 0 0" />
+      <mass
+        value="0.0086823" />
+      <inertia
+        ixx="8.8862E-07"
+        ixy="6.7519E-24"
+        ixz="-2.2789E-23"
+        iyy="6.0057E-07"
+        iyz="1.0223E-22"
+        izz="6.0057E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/FR_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/R_wheel_col.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="FR_wheel_cont"
+    type="continuous">
+    <origin
+      xyz="0.03937 0.015875 0.0127"
+      rpy="0 0 0" />
+    <parent
+      link="mousebot" />
+    <child
+      link="FR_wheel" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      effort="0"
+      velocity="400" />
+  </joint>
+  
+  <link
+    name="FL_wheel">
+    <inertial>
+      <origin
+        xyz="-0.008383 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="0.0086823" />
+      <inertia
+        ixx="8.8862E-07"
+        ixy="-1.287E-23"
+        ixz="2.6298E-23"
+        iyy="6.0057E-07"
+        iyz="2.4648E-23"
+        izz="6.0057E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/FL_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/L_wheel_col.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="FL_wheel_cont"
+    type="continuous">
+    <origin
+      xyz="-0.03937 0.015875 0.0127"
+      rpy="0 0 0" />
+    <parent
+      link="mousebot" />
+    <child
+      link="FL_wheel" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      effort="0"
+      velocity="400" />
+  </joint>
+  
+  <link
+    name="BR_wheel">
+    <inertial>
+      <origin
+        xyz="0.008383 0 -6.9389E-18"
+        rpy="0 0 0" />
+      <mass
+        value="0.0086823" />
+      <inertia
+        ixx="8.8862E-07"
+        ixy="2.8405E-23"
+        ixz="2.3342E-23"
+        iyy="6.0057E-07"
+        iyz="4.162E-23"
+        izz="6.0057E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/BR_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/R_wheel_col.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="BR_wheel_cont"
+    type="continuous">
+    <origin
+      xyz="0.03937 -0.015875 0.0127"
+      rpy="0 0 0" />
+    <parent
+      link="mousebot" />
+    <child
+      link="BR_wheel" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      effort="0"
+      velocity="400" />
+  </joint>
+  
+  <link
+    name="BL_wheel">
+    <inertial>
+      <origin
+        xyz="-0.008383 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="0.0086823" />
+      <inertia
+        ixx="8.8862E-07"
+        ixy="4.1757E-24"
+        ixz="4.1541E-23"
+        iyy="6.0057E-07"
+        iyz="6.9137E-24"
+        izz="6.0057E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/BL_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mousebot/meshes/L_wheel_col.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="BL_wheel_cont"
+    type="continuous">
+    <origin
+      xyz="-0.03937 -0.015875 0.0127"
+      rpy="0 0 0" />
+    <parent
+      link="mousebot" />
+    <child
+      link="BL_wheel" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      effort="0"
+      velocity="400" />
+  </joint>
+  
+  <joint name="hokuyo_joint" type="fixed">
+    <axis xyz="0 1 0" />
+    <origin xyz="0 0 0.04" rpy="0 0 1.570796"/>
+    <parent link="mousebot"/>
+    <child link="hokuyo_link"/>
+  </joint>
+  <link name="hokuyo_link">
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+    <box size="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://mousebot/meshes/hokuyo.dae" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </visual>
+    <inertial>
+      <mass value="1e-5" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+    </inertial>
+  </link>
+  
+  <gazebo reference="mousebot">
+    <material>Gazebo/Green</material>
+  </gazebo>
+  
+  <gazebo reference="FR_wheel">
+    <material>Gazebo/DarkGrey</material>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>5.0</maxVel>
+  </gazebo>
+    
+  <gazebo reference="FL_wheel">
+    <material>Gazebo/DarkGrey</material>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>5.0</maxVel>
+  </gazebo>
+    
+  <gazebo reference="BR_wheel">
+    <material>Gazebo/DarkGrey</material>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>5.0</maxVel>
+  </gazebo>
+    
+  <gazebo reference="BL_wheel">
+    <material>Gazebo/DarkGrey</material>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>5.0</maxVel>
+  </gazebo>
+    
+  <gazebo reference="hokuyo_link">
+    <sensor type="gpu_ray" name="head_hokuyo_sensor">
+      <pose>0 0 0 0 0 0</pose>
+      <visualize>true</visualize>
+      <update_rate>40</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.1415926</min_angle>
+            <max_angle>3.1415926</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.05</min>
+          <max>2.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <!-- Noise parameters based on published spec for Hokuyo laser
+               achieving "+-30mm" accuracy at range < 10m.  A mean of 0.0m and
+               stddev of 0.01m will put 99.7% of samples within 0.03m of the true
+               reading. -->
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+      </ray>
+      <plugin name="gazebo_ros_head_hokuyo_controller" filename="libgazebo_ros_gpu_laser.so">
+        <topicName>scan</topicName>
+        <frameName>hokuyo_link</frameName>
+      </plugin>
+    </sensor>
+  </gazebo>
+    
+  <gazebo>
+    <plugin name="skid_steer_drive_controller" filename="libgazebo_ros_skid_steer_drive.so">
+      <updateRate>10.0</updateRate>
+      <robotNamespace>/</robotNamespace>
+      <leftFrontJoint>FL_wheel_cont</leftFrontJoint>
+      <rightFrontJoint>FR_wheel_cont</rightFrontJoint>
+      <leftRearJoint>BL_wheel_cont</leftRearJoint>
+      <rightRearJoint>BR_wheel_cont</rightRearJoint>
+      <wheelSeparation>0.0762</wheelSeparation>
+      <wheelDiameter>0.0286</wheelDiameter>
+      <robotBaseFrame>base_link</robotBaseFrame>
+      <torque>20</torque>
+      <topicName>cmd_vel</topicName>
+      <broadcastTF>false</broadcastTF>
+    </plugin>
+  </gazebo>
+</robot>
