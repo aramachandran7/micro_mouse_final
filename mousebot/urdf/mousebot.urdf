@@ -275,7 +275,7 @@
   
   <joint name="hokuyo_joint" type="fixed">
     <axis xyz="0 1 0" />
-    <origin xyz="0 0 0.04" rpy="0 0 1.570796"/>
+    <origin xyz="0 0 0.03" rpy="0 0 1.570796"/>
     <parent link="mousebot"/>
     <child link="hokuyo_link"/>
   </joint>
