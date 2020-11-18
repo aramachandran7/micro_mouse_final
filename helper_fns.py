@@ -13,7 +13,7 @@ class DriveConstrianed(object):
     def __init__(self, speed=3.0):
 
         rospy.init_node()
-        
+
         # init global vars
         self.speed = speed
         self.left = None
@@ -27,6 +27,9 @@ class DriveConstrianed(object):
         """
         funciton called in every loop of main
         """
+
+        error = self.right - self.left
+        self.net_error = math.abs(error)
         pass
 
     def compute_side_distances(self):
@@ -36,6 +39,7 @@ class DriveConstrianed(object):
 
         self.left = self.scan[270]
         self.right = self.scan[90]
+
 
     def scan_recieved(self, msg):
         self.scan = msg.ranges
