@@ -408,7 +408,7 @@
       <commandTopic>cmd_vel</commandTopic>
       <odometryTopic>odom</odometryTopic>
       <odometryFrame>odom</odometryFrame>
-      <robotBaseFrame>base_link</robotBaseFrame>
+      <robotBaseFrame>mousebot</robotBaseFrame>
       <odometrySource>encoder</odometrySource>
     </plugin>
   </gazebo>
