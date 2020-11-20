@@ -42,6 +42,8 @@ class DriveStep(object):
 
         self.speed_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.scan = []
+        self.left_distance = None
+        self.right_distance = None
 
 
         # call params
@@ -84,7 +86,17 @@ class DriveStep(object):
     def drive_forwards(self):
         """
         state for drive forwards
+
+        if both walls are present use both to drive centered
+        if only 1 use that and 'wall follow', keep half
+        the unit distance between that wall and bot center
+        if none, only use the /odom
         """
+
+        skew = math.abs(self.left_distance - self.right_distance)
+
+        if (skew > self.skew_threshold) and
+
 
         return self.idle
 
@@ -99,9 +111,9 @@ class DriveStep(object):
         """
         computes distances from sides based on self.scan list
         """
-
-        self.left = self.scan[270]
-        self.right = self.scan[90]
+        # for i in range(-8,8):
+        self.left_distance = self.scan[270]
+        self.right_distance = self.scan[90]
 
 
     def scan_recieved(self, msg):
