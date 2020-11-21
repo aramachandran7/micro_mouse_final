@@ -159,6 +159,7 @@
       velocity="400" />
   </joint>
 
+<!--
   <link
     name="BR_wheel">
     <inertial>
@@ -272,6 +273,7 @@
       effort="0"
       velocity="400" />
   </joint>
+-->
 
   <joint name="hokuyo_joint" type="fixed">
     <axis xyz="0 1 0" />
@@ -323,6 +325,7 @@
     <maxVel>5.0</maxVel>
   </gazebo>
 
+<!--
   <gazebo reference="BR_wheel">
     <material>Gazebo/DarkGrey</material>
     <mu1>1.0</mu1>
@@ -342,6 +345,7 @@
     <minDepth>0.001</minDepth>
     <maxVel>5.0</maxVel>
   </gazebo>
+-->
 
   <gazebo reference="hokuyo_link">
     <sensor type="gpu_ray" name="head_hokuyo_sensor">
