@@ -5,6 +5,8 @@ drive API -
 driver = DriveStep()
 driver.drive(direction_to_drive, current_heading, speed)
 
+
+
 """
 import rospy
 import time
@@ -42,8 +44,11 @@ class DriveStep(object):
 
         self.speed_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.scan = []
-        self.left_distance = None
-        self.right_distance = None
+        self.wall_distances = {
+            left_wall: None,
+            right_wall: None,
+        }
+
 
 
         # call params
@@ -53,6 +58,8 @@ class DriveStep(object):
 
         # error thresholds
         self.turn_error = .01
+        self.path_center = 8.4
+        self.angular_scaler = 0.5
 
         self.angles = {
             'N':0,
@@ -89,31 +96,62 @@ class DriveStep(object):
 
         if both walls are present use both to drive centered
         if only 1 use that and 'wall follow', keep half
-        the unit distance between that wall and bot center
-        if none, only use the /odom
+        the unit distance between that wall and bot center on both sides
+        if no walls, only use the /odom
         """
+        if self.wall_distances['left_wall'] is not None and self.wall_distances['right_wall'] is not None:
+            skew = (self.wall_distances['left_wall'] - self.wall_distances['right_wall']) /  4.8
 
-        skew = math.abs(self.left_distance - self.right_distance)
+        elif (self.wall_distances['left_wall']) is not None:
+            skew = (self.wall_distances['left_wall'] - self.path_center)/2.4
 
-        if (skew > self.skew_threshold) and
+            pass
+        elif (self.wall_distances['right_wall']) is not None:
+            skew = (self.path_center - self.wall_distances['right_wall'])/2.4
 
+        else: # if there's no walls and you're fucked
+            print('You have no walls to go off of! Using only odom for movement')
+            # compute skew from odom?
+            skew = 0 # TODO: FIX THAT SHIT
+
+        motion_twist = Twist()
+        motion_twist.linear.x = self.speed # TODO: maybe add proporaitonal control later
+        # set angular component of motion based on calculated skew
+        motion_twist.angular.z = (skew) * self.angular_scaler
+
+        self.vel_pub.publish(motion_twist)
+
+        if self.distance_covered
+        return self.drive_forwards
 
         return self.idle
 
 
     def idle(self):
         print("you shouldn't be here. Robot should be idle. ")
+        # TODO: publish no movement
         return self.idle
 
 
 
     def compute_side_distances(self):
         """
-        computes distances from sides based on self.scan list
+        computes distances from sides based on self.scan LR averages
+        sets self.wall_distances dictionary
         """
-        # for i in range(-8,8):
-        self.left_distance = self.scan[270]
-        self.right_distance = self.scan[90]
+        # TODO: compartmentalize this code, also add vars for scan ranges
+        if all((i >= 5.5 and i <= 12) for i in self.scan[88:93]):
+            # you have a good left wall!
+            self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
+        else:
+            self.wall_distances['left_wall'] = None
+
+        if all((i >= 5.5 and i <= 12) for i in self.scan[268:273]):
+            # you have a good left wall!
+            self.wall_distances['right_wall'] = sum(self.scan[268:273])/5
+        else:
+            self.wall_distances['right_wall'] = None
+
 
 
     def scan_recieved(self, msg):
@@ -126,6 +164,7 @@ class DriveStep(object):
         """ callback for /odom"""
         self.x_odom, self.y_odom, self.yaw_odom = convert_pose_to_xy_and_theta(msg.pose.pose)
 
+        self.distance_covered =
 
     def drive_main(self, direction_to_drive, current_heading, speed):
         # set global driving conditions based on params
