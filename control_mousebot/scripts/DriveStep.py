@@ -28,7 +28,7 @@ class DriveStep(object):
 
     def __init__(self):
 
-        rospy.init_node()
+        rospy.init_node('DriveStep')
 
         # odom & distance vars
         self.x_odom = 0.0
@@ -43,8 +43,8 @@ class DriveStep(object):
         # lidar vars
         self.scan = []
         self.wall_distances = {
-        left_wall: None,
-        right_wall: None,
+        "left_wall": None,
+        "right_wall": None,
         }
 
 
@@ -76,11 +76,12 @@ class DriveStep(object):
         }
 
     def turn(self):
+        print("Turning...")
         if self.direction_to_drive == self.current_heading:
             return self.drive_forwards
         else:
             # compute angle to turn (closest rotation angle from a to b)
-            angle_to_turn = self.angle_diff(self.angles[direction_to_drive], self.angles[current_heading])
+            angle_to_turn = self.angle_diff(self.angles[self.direction_to_drive], self.angles[self.current_heading])
             print("turning: ", angle_to_turn, " degrees")
             motion = Twist()
             motion.angular.z = self.angular_scaler*((angle_to_turn-self.theta_turned)/(math.pi)) # check signs
@@ -101,15 +102,16 @@ class DriveStep(object):
         the unit distance between that wall and bot center on both sides
         if no walls, only use the /odom
         """
+        print("Driving...")
         if self.wall_distances['left_wall'] is not None and self.wall_distances['right_wall'] is not None:
-            skew = (self.wall_distances['left_wall'] - self.wall_distances['right_wall']) /  4.8
+            skew = (self.wall_distances['left_wall'] - self.wall_distances['right_wall']) /  .048
 
         elif (self.wall_distances['left_wall']) is not None:
-            skew = (self.wall_distances['left_wall'] - self.path_center)/2.4
+            skew = (self.wall_distances['left_wall'] - self.path_center)/.024
 
             pass
         elif (self.wall_distances['right_wall']) is not None:
-            skew = (self.path_center - self.wall_distances['right_wall'])/2.4
+            skew = (self.path_center - self.wall_distances['right_wall'])/.024
 
         else: # if there's no walls and you're fucked
             print('You have no walls to go off of! Using only odom for movement')
@@ -121,12 +123,13 @@ class DriveStep(object):
         # set angular component of motion based on calculated skew
         motion_twist.angular.z = (skew) * self.angular_scaler
 
-        self.vel_pub.publish(motion_twist)
-
-        if self.distance_traveled > self.unit_length-.04:
+        self.speed_pub.publish(motion_twist)
+        print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
+        if math.fabs(self.unit_length - self.distance_traveled) < .02:
             return self.idle
         else:
             return self.drive_forwards
+
 
 
 
@@ -142,14 +145,15 @@ class DriveStep(object):
         computes distances from sides based on self.scan LR averages
         sets self.wall_distances dictionary
         """
+        # TODO: compute distance ahead.
         # TODO: compartmentalize this code, also add vars for scan ranges
-        if all((i >= 5.5 and i <= 12) for i in self.scan[88:93]):
+        if all((i >= .055 and i <= .12) for i in self.scan[88:93]):
             # you have a good left wall!
             self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
         else:
             self.wall_distances['left_wall'] = None
 
-        if all((i >= 5.5 and i <= 12) for i in self.scan[268:273]):
+        if all((i >= .055 and i <= .12) for i in self.scan[268:273]):
             # you have a good left wall!
             self.wall_distances['right_wall'] = sum(self.scan[268:273])/5
         else:
@@ -165,21 +169,24 @@ class DriveStep(object):
 
     def odom_recieved(self, msg):
         """ callback for /odom"""
-        self.x_odom, self.y_odom, self.yaw_odom = convert_pose_to_xy_and_theta(msg.pose.pose)
+        self.x_odom, self.y_odom, self.yaw_odom = self.convert_pose_to_xy_and_theta(msg.pose.pose)
         # compute distance traveled in the direction you care about.
 
         if self.direction_to_drive == 'N' or self.direction_to_drive == 'S':
-            self.distance_traveled = self.x_odom - self.odom_start[0]
-        else:
             self.distance_traveled = self.y_odom - self.odom_start[1]
+        else:
+            self.distance_traveled = self.x_odom - self.odom_start[0]
 
         # compute theta turned based off original heading.
         self.theta_turned = self.angle_diff(self.yaw_odom, self.odom_start[2])
 
 
     def reset_function(self):
-        self.state = turn
+        print('reseting')
+        self.state = self.turn
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
+        self.theta_turned = 0
+        self.distance_traveled = 0
 
     def drive_main(self, direction_to_drive, current_heading, speed):
         # set global driving conditions based on params
@@ -192,8 +199,9 @@ class DriveStep(object):
 
 
         r = rospy.Rate(10)
-        while not rospy.is_shutdown() and not self.state != self.idle:
+        while not rospy.is_shutdown() and self.state != self.idle:
             self.state = self.state()
+            print("operating. ")
             # rospy.sleep(r)
         print("completed DriveStep. Idle State. Awaiting future command ...")
 
@@ -235,5 +243,5 @@ class DriveStep(object):
 
 if __name__ == '__main__':
     drive = DriveStep()
-    drive.drive('E', 'E', 2.0)
-    drive.drive('E', 'N', 3.0)
+    drive.drive_main('E', 'E', 0.1)
+    drive.drive_main('E', 'N', 0.1)
