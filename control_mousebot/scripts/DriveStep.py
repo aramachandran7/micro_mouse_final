@@ -6,13 +6,26 @@ minimize drive error via a function that only has a 'local' understanding.
 
 drive API usage -
 driver = DriveStep()
-driver.drive(direction_to_drive, current_heading, speed)
+driver.drive(direction_to_drive, speed)
+
+possible directions of movement - 'F, B, L, R'
+# odom overshoots how much it turns?
+
+Changes to make to use lidar better:
+1) drive_forwards front and back distance correction
+2) angle turning, check all 4 direction 5 degree differences, add as
+intermediate turn_quality_checking state. Can jump to drive_forwards if no
+relevant lidar data available
+--> motivation for 2nd change is extra turn quality checking redundancy,
+should be fixed if drive_forwards is good.
+
 """
 import rospy
 import time
 import math
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
+from numpy import sign
 
 from geometry_msgs.msg import Twist, Vector3
 from tf.transformations import euler_from_quaternion
@@ -66,29 +79,32 @@ class DriveStep(object):
         self.unit_length = .18 # universal 1 meter unit length?
         self.turn_error = .01
         self.path_center = .084
-        self.angular_scaler = 0.5
+        self.angular_scaler = 1.0
+        self.max_turn_speed = 1.0
+        self.angle_increaser = 1.0
 
         self.angles = {
-            'N':0,
-            'E':3*math.pi/2,
-            'S':math.pi,
-            'W':math.pi/2,
+            'F':0,
+            'B':math.pi,
+            'L':math.pi/2,
+            'R':-math.pi/2,
         }
 
     def turn(self):
         print("Turning...")
-        if self.direction_to_drive == self.current_heading:
+        if self.direction_to_drive == 'F':
             return self.drive_forwards
         else:
             # compute angle to turn (closest rotation angle from a to b)
-            angle_to_turn = self.angle_diff(self.angles[self.direction_to_drive], self.angles[self.current_heading])
+            angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
             print("turning: ", angle_to_turn, " degrees")
             motion = Twist()
-            motion.angular.z = self.angular_scaler*((angle_to_turn-self.theta_turned)/(math.pi)) # check signs
+            x = angle_to_turn-self.theta_turned
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-2)*x))-self.max_turn_speed
             motion.linear.x = 0
             self.speed_pub.publish(motion)
 
-            if math.fabs((angle_to_turn-self.theta_turned))<.05: # TODO variablize
+            if math.fabs((angle_to_turn-self.theta_turned))<.005: # TODO variablize
                 return self.drive_forwards
             else:
                 return self.turn
@@ -118,12 +134,12 @@ class DriveStep(object):
             # compute skew from odom?
             skew = 0 # TODO: FIX THAT SHIT
 
-        motion_twist = Twist()
-        motion_twist.linear.x = self.speed # TODO: maybe add proporaitonal control later
+        motion = Twist()
+        motion.linear.x = self.speed # TODO: maybe add proporaitonal control later
         # set angular component of motion based on calculated skew
-        motion_twist.angular.z = (skew) * self.angular_scaler
+        motion.angular.z = (skew) * self.angular_scaler
 
-        self.speed_pub.publish(motion_twist)
+        self.speed_pub.publish(motion)
         print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
         if math.fabs(self.unit_length - self.distance_traveled) < .02:
             return self.idle
@@ -134,22 +150,22 @@ class DriveStep(object):
 
 
     def idle(self):
-        print("you shouldn't be here. Robot should be idle. ")
-        # TODO: publish no movement
-        return self.idle
-
-
+        print("you shouldn't be here")
 
     def compute_side_distances(self):
         """
         computes distances from sides based on self.scan LR averages
         sets self.wall_distances dictionary
+        we should also compute the angle the robot is off,  if there is a wall.
+
+        Do some angles 
         """
         # TODO: compute distance ahead.
         # TODO: compartmentalize this code, also add vars for scan ranges
         if all((i >= .055 and i <= .12) for i in self.scan[88:93]):
             # you have a good left wall!
             self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
+            self.wall_distances[]
         else:
             self.wall_distances['left_wall'] = None
 
@@ -172,38 +188,40 @@ class DriveStep(object):
         self.x_odom, self.y_odom, self.yaw_odom = self.convert_pose_to_xy_and_theta(msg.pose.pose)
         # compute distance traveled in the direction you care about.
 
-        if self.direction_to_drive == 'N' or self.direction_to_drive == 'S':
-            self.distance_traveled = self.y_odom - self.odom_start[1]
-        else:
-            self.distance_traveled = self.x_odom - self.odom_start[0]
+        # absolute value distance calc  - TODO: Fix
+        self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
 
         # compute theta turned based off original heading.
         self.theta_turned = self.angle_diff(self.yaw_odom, self.odom_start[2])
+        # self.theta_turned = self.yaw_odom-self.odom_start[2]
 
 
-    def reset_function(self):
+
+    def reset_function(self, direction_to_drive, speed):
         print('reseting')
+        # set global driving conditions based on params
+        self.direction_to_drive = direction_to_drive
+        self.speed = speed
         self.state = self.turn
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
         self.theta_turned = 0
         self.distance_traveled = 0
 
-    def drive_main(self, direction_to_drive, current_heading, speed):
-        # set global driving conditions based on params
-        self.direction_to_drive = direction_to_drive
-        self.current_heading = current_heading
-        self.speed = speed
-
+    def drive_main(self, direction_to_drive, speed):
         # initial state of operation upon function call is turn
-        self.reset_function()
-
+        self.reset_function(direction_to_drive, speed)
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown() and self.state != self.idle:
             self.state = self.state()
             print("operating. ")
             # rospy.sleep(r)
+        motion = Twist()
+        motion.linear.x = 0
+        motion.angular.z = 0
+        self.speed_pub.publish(motion)
         print("completed DriveStep. Idle State. Awaiting future command ...")
+
 
 
 
@@ -239,9 +257,14 @@ class DriveStep(object):
             return d2
 
 
-
-
 if __name__ == '__main__':
     drive = DriveStep()
-    drive.drive_main('E', 'E', 0.1)
-    drive.drive_main('E', 'N', 0.1)
+    for i in range(16):
+        drive.drive_main('F', 0.2)
+        print('units passed: ', i+1)
+
+    # drive.drive_main('F', 0.1)
+    # drive.drive_main('F', 0.1)
+    drive.drive_main('R', 0.2)
+    # drive.drive_main('L', 0.1)
+    # drive.drive_main('B', 0.1)
