@@ -170,19 +170,22 @@ class DriveStep(object):
         sets self.wall_distances dictionary
         we should also compute the angle the robot is off,  if there is a wall.
 
-        Do some angles 
+        Do some angles
         """
         # TODO: compartmentalize this code, also add vars for scan ranges
-        if all((i >= .055 and i <= .12) for i in self.scan[88:93]):
+        scan_range = 60
+        scan_angle = scan_range/60
+
+        if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle]):
             # you have a good left wall!
             self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
             # self.wall_distances[]
         else:
             self.wall_distances['left_wall'] = None
 
-        if all((i >= .055 and i <= .12) for i in self.scan[268:273]):
+        if all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle]):
             # you have a good left wall!
-            self.wall_distances['right_wall'] = sum(self.scan[268:273])/5
+            self.wall_distances['right_wall'] = sum(self.scan[268:273])
         else:
             self.wall_distances['right_wall'] = None
 
@@ -290,12 +293,13 @@ class DriveStep(object):
 
 if __name__ == '__main__':
     drive = DriveStep()
-    for i in range(16):
-        drive.drive_main('F', 0.2)
-        print('units passed: ', i+1)
+    #for i in range(16):
+    # drive.drive_main('F', 0.2)
+    #    print('units passed: ', i+1)
 
     # drive.drive_main('F', 0.1)
     # drive.drive_main('F', 0.1)
-    drive.drive_main('R', 0.2)
+    drive.drive_main('B', 0.2)
+
     # drive.drive_main('L', 0.1)
     # drive.drive_main('B', 0.1)
