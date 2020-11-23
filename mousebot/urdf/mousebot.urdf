@@ -8,17 +8,17 @@
     name="mousebot">
     <inertial>
       <origin
-        xyz="-2.77555756156289E-17 0.0180479305034171 0.00591905745005124"
+        xyz="0.0097506 0 0.010314"
         rpy="0 0 0" />
       <mass
-        value="0.0517193970626456" />
+        value="0.147" />
       <inertia
-        ixx="3.85382584538724E-05"
-        ixy="-2.87741325268364E-21"
-        ixz="7.25722956459933E-22"
-        iyy="2.64468808293066E-05"
-        iyz="6.70923696301776E-07"
-        izz="6.30934386859943E-05" />
+        ixx="7.4724E-05"
+        ixy="3.4149E-21"
+        ixz="3.363E-08"
+        iyy="0.00012775"
+        iyz="-3.5117E-21"
+        izz="0.00019203" />
     </inertial>
     <visual>
       <origin
@@ -31,7 +31,7 @@
       <material
         name="">
         <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+          rgba="0.79216 0.81961 0.93333 1" />
       </material>
     </visual>
     <collision>
@@ -49,17 +49,17 @@
     name="R_wheel">
     <inertial>
       <origin
-        xyz="0.0082173 0 0"
+        xyz="-2.1684E-19 -0.00635 -6.9389E-18"
         rpy="0 0 0" />
       <mass
-        value="0.010162" />
+        value="0.010055" />
       <inertia
-        ixx="1.292E-06"
-        ixy="2.5407E-23"
-        ixz="-9.6904E-24"
-        iyy="8.0711E-07"
-        iyz="-7.0765E-23"
-        izz="8.0711E-07" />
+        ixx="7.6865E-07"
+        ixy="2.2411E-23"
+        ixz="1.4542E-23"
+        iyy="1.267E-06"
+        iyz="4.8169E-39"
+        izz="7.6865E-07" />
     </inertial>
     <visual>
       <origin
@@ -89,14 +89,14 @@
     name="R_wheel_cont"
     type="continuous">
     <origin
-      xyz="0.03556 0 0.0127"
+      xyz="0 -0.03175 0.0127"
       rpy="0 0 0" />
     <parent
       link="mousebot" />
     <child
       link="R_wheel" />
     <axis
-      xyz="-1 0 0" />
+      xyz="0 1 0" />
     <limit
       effort="0"
       velocity="200" />
@@ -106,17 +106,17 @@
     name="L_wheel">
     <inertial>
       <origin
-        xyz="-0.0082173 -1.7347E-18 2.0817E-17"
+        xyz="2.1684E-19 0.00635 -1.3878E-17"
         rpy="0 0 0" />
       <mass
-        value="0.010162" />
+        value="0.010055" />
       <inertia
-        ixx="1.292E-06"
-        ixy="-4.191E-23"
-        ixz="1.5725E-23"
-        iyy="8.0711E-07"
-        iyz="4.3783E-23"
-        izz="8.0711E-07" />
+        ixx="7.6865E-07"
+        ixy="5.6028E-24"
+        ixz="9.9526E-23"
+        iyy="1.267E-06"
+        iyz="-1.1206E-23"
+        izz="7.6865E-07" />
     </inertial>
     <visual>
       <origin
@@ -146,20 +146,20 @@
     name="L_wheel_cont"
     type="continuous">
     <origin
-      xyz="-0.03556 0 0.0127"
+      xyz="0 0.03175 0.0127"
       rpy="0 0 0" />
     <parent
       link="mousebot" />
     <child
       link="L_wheel" />
     <axis
-      xyz="-1 0 0" />
+      xyz="0 1 0" />
     <limit
       effort="0"
       velocity="200" />
   </joint>
   
-  <joint name="hokuyo_joint" type="fixed">
+    <joint name="hokuyo_joint" type="fixed">
     <axis xyz="0 1 0" />
     <origin xyz="0 0 0.03" rpy="0 0 1.570796"/>
     <parent link="mousebot"/>
@@ -251,7 +251,7 @@
       <updateRate>10</updateRate>
       <leftJoint>L_wheel_cont</leftJoint>
       <rightJoint>R_wheel_cont</rightJoint>
-      <wheelSeparation>0.0889</wheelSeparation>
+      <wheelSeparation>0.0762</wheelSeparation>
       <wheelDiameter>0.03175</wheelDiameter>
       <torque>10</torque>
       <commandTopic>cmd_vel</commandTopic>

@@ -58,6 +58,7 @@ class DriveStep(object):
         self.wall_distances = {
         "left_wall": None,
         "right_wall": None,
+        "forward_wall": None,
         }
 
 
@@ -82,6 +83,7 @@ class DriveStep(object):
         self.angular_scaler = 1.0
         self.max_turn_speed = 1.0
         self.angle_increaser = 1.0
+        self.scan_angle_range = 2.0
 
         self.angles = {
             'F':0,
@@ -140,7 +142,7 @@ class DriveStep(object):
         motion.angular.z = (skew) * self.angular_scaler
 
         self.speed_pub.publish(motion)
-        print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
+        print("distance traveled: ", self.distance_traveled)
         if math.fabs(self.unit_length - self.distance_traveled) < .02:
             return self.idle
         else:
@@ -158,22 +160,33 @@ class DriveStep(object):
         sets self.wall_distances dictionary
         we should also compute the angle the robot is off,  if there is a wall.
 
-        Do some angles 
+        Do some angles
         """
         # TODO: compute distance ahead.
         # TODO: compartmentalize this code, also add vars for scan ranges
-        if all((i >= .055 and i <= .12) for i in self.scan[88:93]):
+        scan_range = 60
+        scan_angle = scan_range/60
+
+        if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle]):
             # you have a good left wall!
-            self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
-            self.wall_distances[]
+            self.wall_distances['left_wall'] = sum(self.scan[90-scan_angle:93])/5
+            #self.wall_distances[]
         else:
             self.wall_distances['left_wall'] = None
 
-        if all((i >= .055 and i <= .12) for i in self.scan[268:273]):
+        if all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle]):
             # you have a good left wall!
-            self.wall_distances['right_wall'] = sum(self.scan[268:273])/5
+            self.wall_distances['right_wall'] = sum(self.scan[268:273])
         else:
             self.wall_distances['right_wall'] = None
+
+        if all((i >= .055 and i <= .12) for i in self.scan[180-self.scan_angle_range:180+self.scan_angle_range + 1]):
+            # you have a good forwards wall
+            self.wall_distances['forward_wall'] = sum(self.scan[180-self.scan_angle_range:180+self.scan_angle_range + 1])/5
+
+        else:
+            self.wall_distances['forward_wall'] = None
+
 
 
 
@@ -259,12 +272,13 @@ class DriveStep(object):
 
 if __name__ == '__main__':
     drive = DriveStep()
-    for i in range(16):
-        drive.drive_main('F', 0.2)
-        print('units passed: ', i+1)
+    #for i in range(16):
+    # drive.drive_main('F', 0.2)
+    #    print('units passed: ', i+1)
 
     # drive.drive_main('F', 0.1)
     # drive.drive_main('F', 0.1)
-    drive.drive_main('R', 0.2)
+    drive.drive_main('B', 0.2)
+
     # drive.drive_main('L', 0.1)
     # drive.drive_main('B', 0.1)

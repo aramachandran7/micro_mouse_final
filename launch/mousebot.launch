@@ -1,9 +1,6 @@
 <launch>
   <include
     file="$(find gazebo_ros)/launch/empty_world.launch" />
-  <param name="robot_description"
-    command="$(find xacro)/xacro '$(find mousebot)/urdf/mousebot.urdf'"/>
-  
   <node
     name="tf_footprint_base"
     pkg="tf"
@@ -20,7 +17,4 @@
     pkg="rostopic"
     type="rostopic"
     args="pub /calibrated std_msgs/Bool true" />
-  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
-    <param name="publish_frequency" type="double" value="30.0" />
-  </node>  
 </launch>
