@@ -58,7 +58,10 @@ class DriveStep(object):
         self.wall_distances = {
         "left_wall": None,
         "right_wall": None,
+        "front_wall": None, 
         }
+
+        self.angle_off = 0.0
 
 
         self.state = self.turn
@@ -82,6 +85,7 @@ class DriveStep(object):
         self.angular_scaler = 1.0
         self.max_turn_speed = 1.0
         self.angle_increaser = 1.0
+        self.distance_threshold = .02
 
         self.angles = {
             'F':0,
@@ -141,10 +145,18 @@ class DriveStep(object):
 
         self.speed_pub.publish(motion)
         print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
-        if math.fabs(self.unit_length - self.distance_traveled) < .02:
-            return self.idle
-        else:
-            return self.drive_forwards
+
+        if self.wall_distances["front_wall"] is not None: 
+            # optional control logic if there is a front wall to correct off of
+            if math.fabs(self.wall_distances["front_wall"] - self.path_center) < self.distance_threshold:
+                return self.idle
+            else:
+                return self.drive_forwards
+        else: 
+            if math.fabs(self.unit_length - self.distance_traveled) < self.distance_threshold:
+                return self.idle
+            else:
+                return self.drive_forwards
 
 
 
@@ -160,12 +172,11 @@ class DriveStep(object):
 
         Do some angles 
         """
-        # TODO: compute distance ahead.
         # TODO: compartmentalize this code, also add vars for scan ranges
         if all((i >= .055 and i <= .12) for i in self.scan[88:93]):
             # you have a good left wall!
             self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
-            self.wall_distances[]
+            # self.wall_distances[]
         else:
             self.wall_distances['left_wall'] = None
 
@@ -175,7 +186,29 @@ class DriveStep(object):
         else:
             self.wall_distances['right_wall'] = None
 
+        if all((i >= .055 and i <= .12) for i in (self.scan[-2:] + self.scan[:3])):
+            # you have a good front wall! Check values around the center
+            self.wall_distances["front_wall"] = sum(self.scan[-2:] + self.scan[:3])/5
+        else:
+            self.wall_distances['front_wall'] = None
 
+        # compute angle_off
+
+        if self.wall_distances['front_wall'] is not None: 
+            # compute angle based on front wall 
+            self.scan 
+        elif self.wall_distances['left_wall'] is not None:
+            # compute angle based on left wall 
+        elif self.wall_distances['right_wall'] is not None: 
+            # compute angle based on right wall 
+            
+        else: 
+            print("no angle_off computation possible") 
+
+        
+
+
+        
 
     def scan_recieved(self, msg):
         """ callback for /scan"""
@@ -221,8 +254,6 @@ class DriveStep(object):
         motion.angular.z = 0
         self.speed_pub.publish(motion)
         print("completed DriveStep. Idle State. Awaiting future command ...")
-
-
 
 
     def convert_pose_to_xy_and_theta(self,pose):
