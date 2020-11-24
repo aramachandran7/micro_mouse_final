@@ -31,7 +31,7 @@ from geometry_msgs.msg import Twist, Vector3
 from tf.transformations import euler_from_quaternion
 
 
-class DriveStep(object, scan_range=10.0):
+class DriveStep(object):
     """Drive 1 unit in 1 of 4 primary directions - N E S W, at a speed
     Use /odom to traverse forward and backwards
     Use /scan to check left / right spacing / corrections
@@ -86,7 +86,7 @@ class DriveStep(object, scan_range=10.0):
         self.max_turn_speed = 1.0
         self.angle_increaser = 1.0
         self.distance_threshold = .02
-        self.scan_range = scan_range
+        self.scan_range = 10
 
 
         self.angles = {
@@ -124,7 +124,7 @@ class DriveStep(object, scan_range=10.0):
         the unit distance between that wall and bot center on both sides
         if no walls, only use the /odom
         """
-        print("Driving...")
+        # print("Driving...")
         if self.wall_distances['left_wall'] is not None and self.wall_distances['right_wall'] is not None:
             skew = (self.wall_distances['left_wall'] - self.wall_distances['right_wall']) /  .048
 
@@ -136,7 +136,7 @@ class DriveStep(object, scan_range=10.0):
             skew = (self.path_center - self.wall_distances['right_wall'])/.024
 
         else: # if there's no walls and you're fucked
-            print('You have no walls to go off of! Using only odom for movement')
+            # print('You have no walls to go off of! Using only odom for movement')
             # compute skew from odom?
             skew = 0 # TODO: FIX THAT SHIT
 
@@ -146,7 +146,7 @@ class DriveStep(object, scan_range=10.0):
         motion.angular.z = (skew) * self.angular_scaler
 
         self.speed_pub.publish(motion)
-        print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
+        # print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
 
         if self.wall_distances["front_wall"] is not None: 
             # optional control logic if there is a front wall to correct off of
@@ -161,10 +161,26 @@ class DriveStep(object, scan_range=10.0):
                 return self.drive_forwards
 
 
-
-
     def idle(self):
         print("you shouldn't be here")
+
+
+    def compute_angle_off(self, center): 
+        scan_angle = 12
+        
+        # b = sum(self.scan[center+scan_angle-4:center+scan_angle+5]) / 8
+        # c = sum(self.scan[center-scan_angle-4:center-scan_angle+5]) / 8
+        b = self.scan[center+scan_angle]
+        c = self.scan[center-scan_angle]
+        a = math.sqrt(b**2+c**2-(2*b*c*math.cos(math.radians(2*scan_angle))))
+        B = math.asin((b*math.sin(math.radians(2*scan_angle)))/a)
+        # switch to degrees 
+        AOA = 180 - (math.degrees(B) + scan_angle)
+        angle = (AOA-90) + center
+        print("b,c: ", b,c)
+        print("angle_off: ", angle)
+
+        # return angle
 
     def compute_side_distances(self):
         """
@@ -174,19 +190,20 @@ class DriveStep(object, scan_range=10.0):
 
         Do some angles
         """
-        # TODO: compartmentalize this code, also add vars for scan ranges
-        scan_angle = self.scan_range/2
+        scan_angle = 5
+        #print("computing side distances")
 
         if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1]):
-            # you have a good left wall!
+            # print("you have a good left wall!")
             self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
-            # self.wall_distances[]
         else:
             self.wall_distances['left_wall'] = None
+        #    print("you shouldn't have a left wall")
 
         if all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1]):
             # you have a good left wall!
             self.wall_distances['right_wall'] = sum(self.scan[268:273])
+            
         else:
             self.wall_distances['right_wall'] = None
 
@@ -197,17 +214,18 @@ class DriveStep(object, scan_range=10.0):
             self.wall_distances['front_wall'] = None
 
         # compute angle_off
-
-        if self.wall_distances['front_wall'] is not None: 
-            # compute angle based on front wall 
-            self.scan 
-        elif self.wall_distances['left_wall'] is not None:
-            # compute angle based on left wall 
-        elif self.wall_distances['right_wall'] is not None: 
-            # compute angle based on right wall 
-            
-        else: 
-            print("no angle_off computation possible") 
+        self.compute_angle_off(90)
+        # if self.wall_distances['front_wall'] is not None: 
+        #     # compute angle based on front wall 
+        #     self.angle_off = self.compute_angle_off(0, scan_angle)
+        # elif self.wall_distances['left_wall'] is not None:
+        #     # compute angle based on left wall 
+        #     self.angle_off = self.compute_angle_off(90, scan_angle)
+        # elif self.wall_distances['right_wall'] is not None:
+        #     # compute angle based on right wall 
+        #     self.angle_off = self.compute_angle_off(270, scan_angle)
+        # else: 
+        #     print("no angle_off computation possible") 
 
         
 
@@ -218,7 +236,6 @@ class DriveStep(object, scan_range=10.0):
         """ callback for /scan"""
         self.scan = msg.ranges
         self.compute_side_distances()
-
 
     def odom_recieved(self, msg):
         """ callback for /odom"""
@@ -235,7 +252,7 @@ class DriveStep(object, scan_range=10.0):
 
 
     def reset_function(self, direction_to_drive, speed):
-        print('reseting')
+        #print('reseting')
         # set global driving conditions based on params
         self.direction_to_drive = direction_to_drive
         self.speed = speed
@@ -248,16 +265,15 @@ class DriveStep(object, scan_range=10.0):
         # initial state of operation upon function call is turn
         self.reset_function(direction_to_drive, speed)
 
-        r = rospy.Rate(10)
         while not rospy.is_shutdown() and self.state != self.idle:
             self.state = self.state()
-            print("operating. ")
+        #    print("operating. ")
             # rospy.sleep(r)
         motion = Twist()
         motion.linear.x = 0
         motion.angular.z = 0
         self.speed_pub.publish(motion)
-        print("completed DriveStep. Idle State. Awaiting future command ...")
+    #    print("completed DriveStep. Idle State. Awaiting future command ...")
 
 
     def convert_pose_to_xy_and_theta(self,pose):
@@ -297,10 +313,11 @@ if __name__ == '__main__':
     #for i in range(16):
     # drive.drive_main('F', 0.2)
     #    print('units passed: ', i+1)
-
+    r = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        drive.drive_main('F', 0)
     # drive.drive_main('F', 0.1)
-    # drive.drive_main('F', 0.1)
-    drive.drive_main('B', 0.2)
+    # drive.drive_main('B', 0.2)
 
     # drive.drive_main('L', 0.1)
     # drive.drive_main('B', 0.1)

@@ -161,7 +161,7 @@
   
     <joint name="hokuyo_joint" type="fixed">
     <axis xyz="0 1 0" />
-    <origin xyz="0 0 0.03" rpy="0 0 1.570796"/>
+    <origin xyz="0 0 0.03" rpy="0 0 3.1415926"/>
     <parent link="mousebot"/>
     <child link="hokuyo_link"/>
   </joint>
@@ -217,7 +217,7 @@
       <ray>
         <scan>
           <horizontal>
-            <samples>720</samples>
+            <samples>361</samples>
             <resolution>1</resolution>
             <min_angle>-3.1415926</min_angle>
             <max_angle>3.1415926</max_angle>
