@@ -25,10 +25,12 @@ import time
 import math
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-from numpy import sign
+import numpy as np    #import sign, array, dot
+from statistics import mean
 
-from geometry_msgs.msg import Twist, Vector3
+from geometry_msgs.msg import Twist, Vector3, Point
 from tf.transformations import euler_from_quaternion
+from visualization_msgs.msg import Marker, MarkerArray
 
 
 class DriveStep(object):
@@ -69,6 +71,7 @@ class DriveStep(object):
         # setup pub sub
         rospy.Subscriber('/scan', LaserScan,self.scan_recieved)
         rospy.Subscriber('/odom', Odometry,self.odom_recieved)
+        self.wall_pub = rospy.Publisher('visualization_marker', Marker, queue_size=10)
 
 
         self.speed_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -86,7 +89,7 @@ class DriveStep(object):
         self.max_turn_speed = 1.0
         self.angle_increaser = 1.0
         self.distance_threshold = .02
-        self.scan_range = 10
+        self.scan_angle = 5
 
 
         self.angles = {
@@ -165,22 +168,31 @@ class DriveStep(object):
         print("you shouldn't be here")
 
 
-    def compute_angle_off(self, center): 
-        scan_angle = 12
-        
-        # b = sum(self.scan[center+scan_angle-4:center+scan_angle+5]) / 8
-        # c = sum(self.scan[center-scan_angle-4:center-scan_angle+5]) / 8
-        b = self.scan[center+scan_angle]
-        c = self.scan[center-scan_angle]
-        a = math.sqrt(b**2+c**2-(2*b*c*math.cos(math.radians(2*scan_angle))))
-        B = math.asin((b*math.sin(math.radians(2*scan_angle)))/a)
-        # switch to degrees 
-        AOA = 180 - (math.degrees(B) + scan_angle)
-        angle = (AOA-90) + center
-        print("b,c: ", b,c)
-        print("angle_off: ", angle)
+    def pol2cart(self, d, theta):
+        """helper function for converting cartesian coordinates to polar coordinates"""
+        x = d * math.cos(math.radians(theta))
+        y = d * math.sin(math.radians(theta))
+        return x, y
 
-        # return angle
+    def compute_angle_off(self, center): 
+        scan_angle = 15
+        x = np.zeros((scan_angle*2))
+        y = np.zeros((scan_angle*2))
+        for i in range(scan_angle*2):
+            theta = center + (i-scan_angle)
+            x[i], y[i] = self.pol2cart(self.scan[theta], theta)
+        
+        x_adj = x - mean(x)
+        y_adj = y - mean(y)
+        
+        B_num = sum(np.multiply(x_adj, y_adj))
+        B_den = sum(np.square(x_adj))
+        # opposite reciprocal of calculated slope
+        angle = np.rad2deg(math.atan2(-B_den, B_num)) + (270-center)    # add  to fix robot perspective
+        distance = self.scan[int(angle)]
+        self.publish_vector(distance, angle)
+
+        return distance, angle
 
     def compute_side_distances(self):
         """
@@ -190,20 +202,20 @@ class DriveStep(object):
 
         Do some angles
         """
-        scan_angle = 5
         #print("computing side distances")
-
+        scan_angle = 5
         if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1]):
             # print("you have a good left wall!")
-            self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
+            #self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
+            self.compute_angle_off(90)
         else:
             self.wall_distances['left_wall'] = None
         #    print("you shouldn't have a left wall")
 
         if all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1]):
             # you have a good left wall!
-            self.wall_distances['right_wall'] = sum(self.scan[268:273])
-            
+            #self.wall_distances['right_wall'] = sum(self.scan[268:273])
+            self.compute_angle_off(270)
         else:
             self.wall_distances['right_wall'] = None
 
@@ -214,7 +226,7 @@ class DriveStep(object):
             self.wall_distances['front_wall'] = None
 
         # compute angle_off
-        self.compute_angle_off(90)
+        
         # if self.wall_distances['front_wall'] is not None: 
         #     # compute angle based on front wall 
         #     self.angle_off = self.compute_angle_off(0, scan_angle)
@@ -306,6 +318,39 @@ class DriveStep(object):
             return d1
         else:
             return d2
+
+    def publish_vector(self, d, theta):
+        marker = Marker()
+        marker.header.frame_id = "mousebot"
+        marker.type = marker.LINE_STRIP
+        marker.action = marker.ADD
+
+        marker.scale.x = 0.01
+
+        marker.color.a = 1.0
+        marker.color.b = 1.0
+
+        marker.pose.orientation.x = 0.0
+        marker.pose.orientation.y = 0.0
+        marker.pose.orientation.z = 0.0
+        marker.pose.orientation.w = 1.0
+
+        marker.pose.position.x = 0.0
+        marker.pose.position.y = 0.0
+        marker.pose.position.z = 0.0
+
+        start_point = Point(0, 0, 0)
+        end_point = Point()
+        end_point.x = self.pol2cart(d, theta)[0]
+        end_point.y = self.pol2cart(d, theta)[1]
+        end_point.z = 0
+        marker.points.append(start_point)
+        marker.points.append(end_point)
+
+        self.wall_pub.publish(marker)
+
+
+
 
 
 if __name__ == '__main__':
