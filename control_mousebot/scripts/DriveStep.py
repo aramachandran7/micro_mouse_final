@@ -31,7 +31,7 @@ from geometry_msgs.msg import Twist, Vector3
 from tf.transformations import euler_from_quaternion
 
 
-class DriveStep(object):
+class DriveStep(object, scan_range=10.0):
     """Drive 1 unit in 1 of 4 primary directions - N E S W, at a speed
     Use /odom to traverse forward and backwards
     Use /scan to check left / right spacing / corrections
@@ -86,6 +86,8 @@ class DriveStep(object):
         self.max_turn_speed = 1.0
         self.angle_increaser = 1.0
         self.distance_threshold = .02
+        self.scan_range = scan_range
+
 
         self.angles = {
             'F':0,
@@ -173,17 +175,16 @@ class DriveStep(object):
         Do some angles
         """
         # TODO: compartmentalize this code, also add vars for scan ranges
-        scan_range = 60
-        scan_angle = scan_range/60
+        scan_angle = self.scan_range/2
 
-        if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle]):
+        if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1]):
             # you have a good left wall!
             self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
             # self.wall_distances[]
         else:
             self.wall_distances['left_wall'] = None
 
-        if all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle]):
+        if all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1]):
             # you have a good left wall!
             self.wall_distances['right_wall'] = sum(self.scan[268:273])
         else:
