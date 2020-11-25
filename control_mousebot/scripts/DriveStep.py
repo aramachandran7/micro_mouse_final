@@ -62,6 +62,7 @@ class DriveStep(object):
         "right_wall": None,
         "front_wall": None, 
         }
+        self.skew = None
 
         self.angle_off = 0.0
 
@@ -100,16 +101,16 @@ class DriveStep(object):
         }
 
     def turn(self):
-        print("Turning...")
+        #print("Turning...")
         if self.direction_to_drive == 'F':
             return self.drive_forwards
         else:
             # compute angle to turn (closest rotation angle from a to b)
             angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
-            print("turning: ", angle_to_turn, " degrees")
+   
             motion = Twist()
             x = angle_to_turn-self.theta_turned
-            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-2)*x))-self.max_turn_speed
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-20)*x))-self.max_turn_speed
             motion.linear.x = 0
             self.speed_pub.publish(motion)
 
@@ -128,25 +129,28 @@ class DriveStep(object):
         if no walls, only use the /odom
         """
         # print("Driving...")
-        if self.wall_distances['left_wall'] is not None and self.wall_distances['right_wall'] is not None:
-            skew = (self.wall_distances['left_wall'] - self.wall_distances['right_wall']) /  .048
-
-        elif (self.wall_distances['left_wall']) is not None:
-            skew = (self.wall_distances['left_wall'] - self.path_center)/.024
-
-            pass
-        elif (self.wall_distances['right_wall']) is not None:
-            skew = (self.path_center - self.wall_distances['right_wall'])/.024
+        if self.skew is not None:
+            # If we have at least one wall
+            angle_correction = ((self.skew[1]-90)**3)/1000
+            if self.skew[0] > 0.001:
+                sideskew = self.skew[0] - 0.084
+            elif self.skew[0] < 0.001:
+                sideskew = 0.084 + self.skew[0]
+                print(sideskew)
+            drift_correction = (sideskew**3)*10000
+            
+            
+            angvel = angle_correction + drift_correction
 
         else: # if there's no walls and you're fucked
             # print('You have no walls to go off of! Using only odom for movement')
             # compute skew from odom?
-            skew = 0 # TODO: FIX THAT SHIT
+            angvel = 0
 
         motion = Twist()
         motion.linear.x = self.speed # TODO: maybe add proporaitonal control later
         # set angular component of motion based on calculated skew
-        motion.angular.z = (skew) * self.angular_scaler
+        motion.angular.z = angvel
 
         self.speed_pub.publish(motion)
         # print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
@@ -174,7 +178,7 @@ class DriveStep(object):
         y = d * math.sin(math.radians(theta))
         return x, y
 
-    def compute_angle_off(self, center): 
+    def compute_skew(self, center): 
         scan_angle = 15
         x = np.zeros((scan_angle*2))
         y = np.zeros((scan_angle*2))
@@ -189,7 +193,7 @@ class DriveStep(object):
         B_den = sum(np.square(x_adj))
         # opposite reciprocal of calculated slope
         angle = np.rad2deg(math.atan2(-B_den, B_num)) + (270-center)    # add  to fix robot perspective
-        distance = self.scan[int(angle)]
+        distance = self.scan[int(angle)] * np.sign(180-center)          # Changing sign to fit direction
         self.publish_vector(distance, angle)
 
         return distance, angle
@@ -203,21 +207,17 @@ class DriveStep(object):
         Do some angles
         """
         #print("computing side distances")
-        scan_angle = 5
+        scan_angle = 15
         if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1]):
-            # print("you have a good left wall!")
-            #self.wall_distances['left_wall'] = sum(self.scan[88:93])/5
-            self.compute_angle_off(90)
+            # Follow Left wall for straight path
+            self.skew = self.compute_skew(90)
+        elif all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1]):
+            # If no Left wall, follow right wall
+            self.skew = self.compute_skew(270)
         else:
-            self.wall_distances['left_wall'] = None
-        #    print("you shouldn't have a left wall")
-
-        if all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1]):
-            # you have a good left wall!
-            #self.wall_distances['right_wall'] = sum(self.scan[268:273])
-            self.compute_angle_off(270)
-        else:
-            self.wall_distances['right_wall'] = None
+            # No walls found, cannot correct orientation
+            print('No Side Walls Found')
+            self.skew = None
 
         if all((i >= .055 and i <= .12) for i in (self.scan[-2:] + self.scan[:3])):
             # you have a good front wall! Check values around the center
@@ -355,14 +355,14 @@ class DriveStep(object):
 
 if __name__ == '__main__':
     drive = DriveStep()
-    #for i in range(16):
-    # drive.drive_main('F', 0.2)
-    #    print('units passed: ', i+1)
-    r = rospy.Rate(10)
-    while not rospy.is_shutdown():
-        drive.drive_main('F', 0)
-    # drive.drive_main('F', 0.1)
-    # drive.drive_main('B', 0.2)
+    for i in range(15):
+        drive.drive_main('F', 0.2)
+    #drive.drive_main('R', 0.2)
 
-    # drive.drive_main('L', 0.1)
-    # drive.drive_main('B', 0.1)
+    #r = rospy.Rate(10)
+    #while not rospy.is_shutdown():
+    #    for i in range(14):
+    #        drive.drive_main('F', 0.2)
+    #    drive.drive_main('R', 0.2)
+    
+    
