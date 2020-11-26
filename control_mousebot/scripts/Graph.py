@@ -3,6 +3,41 @@ class to scan Lidar scan to build graph maze understanding
 Theory - building should only interact with four nearest walls
 """
 
+
+"""
+in a 16x16 maze there are 16 nodes.
+each node represnts a possible robot position.
+The robot being able to move between nodes represents a connection.
+
+"""
+
+class Node(object):
+    def __init__(self,pos):
+        self.l = None
+        self.r = None
+        self.f = None
+        self.b = None
+        self.x = x
+        self.y = y
+
+class Updater(object):
+    def __init__(self):
+
+        self.graph = {
+            (0,0): Node((0,0))
+        }
+
+    def update_graph(self,pos,walls):
+        """
+        update graph based on walls
+        TODO: fucking need the heading
+        """
+        # need an easy way to access nodes by position
+        self.graph[pos] = Node(pos)
+
+
+
+
 class Graph(object):
     def __init__(self, range=5):
         # rospy shit

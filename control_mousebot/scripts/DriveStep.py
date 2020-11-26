@@ -57,10 +57,15 @@ class DriveStep(object):
 
         # lidar vars
         self.scan = []
+        self.walls = {
+            "F": False,
+            "R": False,
+            "L": False
+        }
         self.wall_distances = {
         "left_wall": None,
         "right_wall": None,
-        "front_wall": None, 
+        "front_wall": None,
         }
         self.skew = None
 
@@ -107,7 +112,7 @@ class DriveStep(object):
         else:
             # compute angle to turn (closest rotation angle from a to b)
             angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
-   
+
             motion = Twist()
             x = angle_to_turn-self.theta_turned
             motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*x))-self.max_turn_speed
@@ -139,8 +144,8 @@ class DriveStep(object):
                 angle_correction = ((self.skew[1]+90)**3)/1000
             #    print(sideskew)
             drift_correction = (sideskew**3)*10000
-            
-            
+
+
             angvel = angle_correction + drift_correction
 
         else: # if there's no walls and you're fucked
@@ -156,13 +161,13 @@ class DriveStep(object):
         self.speed_pub.publish(motion)
         # print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
 
-        if self.wall_distances["front_wall"] is not None: 
+        if self.wall_distances["front_wall"] is not None:
             # optional control logic if there is a front wall to correct off of
             if math.fabs(self.wall_distances["front_wall"] - self.path_center) < self.distance_threshold:
                 return self.idle
             else:
                 return self.drive_forwards
-        else: 
+        else:
             if math.fabs(self.unit_length - self.distance_traveled) < self.distance_threshold:
                 return self.idle
             else:
@@ -179,17 +184,17 @@ class DriveStep(object):
         y = d * math.sin(math.radians(theta))
         return x, y
 
-    def compute_skew(self, center): 
+    def compute_skew(self, center):
         scan_angle = 15
         x = np.zeros((scan_angle*2))
         y = np.zeros((scan_angle*2))
         for i in range(scan_angle*2):
             theta = center + (i-scan_angle)
             x[i], y[i] = self.pol2cart(self.scan[theta], theta)
-        
+
         x_adj = x - mean(x)
         y_adj = y - mean(y)
-        
+
         B_num = sum(np.multiply(x_adj, y_adj))
         B_den = sum(np.square(x_adj))
         # opposite reciprocal of calculated slope
@@ -205,14 +210,16 @@ class DriveStep(object):
         sets self.wall_distances dictionary
         we should also compute the angle the robot is off,  if there is a wall.
 
-        Do some angles
         """
-        #print("computing side distances")
         scan_angle = 15
-        if all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1]):
+        self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
+        self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
+        self.walls["F"] = all((i >= .055 and i <= .12) for i in (self.scan[-2:] + self.scan[:3]))
+
+        if self.walls["L"]:
             # Follow Left wall for straight path
             self.skew = self.compute_skew(90)
-        elif all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1]):
+        elif self.walls["R"]:
             # If no Left wall, follow right wall
             self.skew = self.compute_skew(270)
         else:
@@ -220,30 +227,13 @@ class DriveStep(object):
             print('No Side Walls Found')
             self.skew = None
 
-        if all((i >= .055 and i <= .12) for i in (self.scan[-2:] + self.scan[:3])):
+        if self.walls["F"]:
             # you have a good front wall! Check values around the center
             self.wall_distances["front_wall"] = sum(self.scan[-2:] + self.scan[:3])/5
         else:
             self.wall_distances['front_wall'] = None
+            self.walls["F"] = False
 
-        # compute angle_off
-        
-        # if self.wall_distances['front_wall'] is not None: 
-        #     # compute angle based on front wall 
-        #     self.angle_off = self.compute_angle_off(0, scan_angle)
-        # elif self.wall_distances['left_wall'] is not None:
-        #     # compute angle based on left wall 
-        #     self.angle_off = self.compute_angle_off(90, scan_angle)
-        # elif self.wall_distances['right_wall'] is not None:
-        #     # compute angle based on right wall 
-        #     self.angle_off = self.compute_angle_off(270, scan_angle)
-        # else: 
-        #     print("no angle_off computation possible") 
-
-        
-
-
-        
 
     def scan_recieved(self, msg):
         """ callback for /scan"""
@@ -286,6 +276,7 @@ class DriveStep(object):
         motion.linear.x = 0
         motion.angular.z = 0
         self.speed_pub.publish(motion)
+        return self.walls
     #    print("completed DriveStep. Idle State. Awaiting future command ...")
 
 
@@ -351,9 +342,6 @@ class DriveStep(object):
         self.wall_pub.publish(marker)
 
 
-
-
-
 if __name__ == '__main__':
     drive = DriveStep()
     for i in range(2):
@@ -369,5 +357,3 @@ if __name__ == '__main__':
     #    for i in range(14):
     #        drive.drive_main('F', 0.2)
     #    drive.drive_main('R', 0.2)
-    
-    

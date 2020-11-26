@@ -1,5 +1,8 @@
 """
 Objective - to compute the next move for the robot in the mapping phase given the robots current position and map understanding.
+
+design decisions -
+isolate heading of robot
 """
 
 class MoveComputer(Object):
@@ -32,13 +35,12 @@ class MoveComputer(Object):
                 self.confidences[i] = 0.0
                 # distance_to_unknown = self.unkown(i)
             else:
+                #  if an opening, evaluate the unknown
                 self.confidences[i] = self.evaluate_directions(i)
-        
-        return self.confidences
 
     def evaluate_directions(self, direction):
         """
-        calculate the weight of each direction based on finding unknown places 
+        calculate the weight of each direction based on finding unknown places
         """
         # 0 1 2 3 : f b l r
         for i, status in enumrate(self.confidences):
@@ -57,8 +59,11 @@ class MoveComputer(Object):
         surrounding_nodes = self.graph.return_surrounding_nodes(map_coord)
         for n in surrounding_nodes:
             walls.append(self.graph.graph[n[0]][n[1]])
-            
-        return walls[heading:] + walls[:heading]
+
+        return walls
+
+        # return walls[heading:] + walls[:heading]
+
 
     def compute_guiding_vector(self):
         return (7.5-self.neato_position[0],7.5-self.neato_position[1])
