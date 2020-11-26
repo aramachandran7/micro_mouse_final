@@ -7,6 +7,8 @@ class MoveComputer(Object):
         self.confidences = [0.0, 0.0, 0.0, 0.0] # f b l r
         self.graph = None
         self.neato_position = None
+        self.heading = 0
+        self.surrounding_walls = []
 
     def compute_next_move(self, graph, current_position):
         """
@@ -19,12 +21,25 @@ class MoveComputer(Object):
         guiding_vector = self.compute_guiding_vector()
 
         # set walls to 0
-        self.check_for_walls()
+        self.set_confidences()
 
-        self.evaluate_directions()
+    def set_confidences(self):
+        """ set's zeroes if walls"""
+        self.surrounding_walls = self.get_walls(self.neato_position, self.heading)
+        for i, status in enumerate(self.surrounding_walls):
+            if status == 1:
+                # if it is a wall
+                self.confidences[i] = 0.0
+                # distance_to_unknown = self.unkown(i)
+            else:
+                self.confidences[i] = self.evaluate_directions(i)
+        
+        return self.confidences
 
-
-    def evaluate_directions(self):
+    def evaluate_directions(self, direction):
+        """
+        calculate the weight of each direction based on finding unknown places 
+        """
         # 0 1 2 3 : f b l r
         for i, status in enumrate(self.confidences):
             if status == 1: # if there's an opening, how far till zero
@@ -32,20 +47,18 @@ class MoveComputer(Object):
                     new_pos = self.neato_position
                 find_walls(new_pos)
 
-
-
-    def check_for_walls(self):
-        """ set's zeroes if walls"""
-        surrounding_nodes = graph.return_surrounding_nodes(self.neato_position)
-        for i, direction in enumerate(surrounding_nodes):
-            status = graph.graph[direction[0]][direction[1]]
-            if status != 1:
-                # if its an opening
-                self.confidences[i] = 1.0
-                # distance_to_unknown = self.unkown(i)
-            else:
-                self.confidences[i] = 0.0
-
+    def get_walls(self, map_coord, heading):
+        """
+        returns list of 0, 1, or None for a given map square
+        (f r b l) in map frame
+        heading = 0, 1, 2, or 3    f, r, b, l
+        """
+        walls = []
+        surrounding_nodes = self.graph.return_surrounding_nodes(map_coord)
+        for n in surrounding_nodes:
+            walls.append(self.graph.graph[n[0]][n[1]])
+            
+        return walls[heading:] + walls[:heading]
 
     def compute_guiding_vector(self):
         return (7.5-self.neato_position[0],7.5-self.neato_position[1])
