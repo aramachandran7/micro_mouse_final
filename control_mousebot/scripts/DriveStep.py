@@ -110,7 +110,7 @@ class DriveStep(object):
    
             motion = Twist()
             x = angle_to_turn-self.theta_turned
-            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-20)*x))-self.max_turn_speed
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*x))-self.max_turn_speed
             motion.linear.x = 0
             self.speed_pub.publish(motion)
 
@@ -131,12 +131,13 @@ class DriveStep(object):
         # print("Driving...")
         if self.skew is not None:
             # If we have at least one wall
-            angle_correction = ((self.skew[1]-90)**3)/1000
             if self.skew[0] > 0.001:
                 sideskew = self.skew[0] - 0.084
+                angle_correction = ((self.skew[1]-90)**3)/1000
             elif self.skew[0] < 0.001:
                 sideskew = 0.084 + self.skew[0]
-                print(sideskew)
+                angle_correction = ((self.skew[1]+90)**3)/1000
+            #    print(sideskew)
             drift_correction = (sideskew**3)*10000
             
             
@@ -355,9 +356,13 @@ class DriveStep(object):
 
 if __name__ == '__main__':
     drive = DriveStep()
-    for i in range(15):
+    for i in range(2):
         drive.drive_main('F', 0.2)
-    #drive.drive_main('R', 0.2)
+    print("turning")
+    drive.drive_main('R', 0.2)
+    drive.drive_main('R', 0.2)
+    drive.drive_main('F', 0.2)
+    drive.drive_main('L', 0.2)
 
     #r = rospy.Rate(10)
     #while not rospy.is_shutdown():
