@@ -13,27 +13,42 @@ The robot being able to move between nodes represents a connection.
 
 class Node(object):
     def __init__(self,pos):
-        self.l = None
-        self.r = None
         self.f = None
         self.b = None
-        self.x = x
-        self.y = y
+        self.l = None
+        self.r = None
 
-class Updater(object):
+
+class Graph2(object):
     def __init__(self):
 
         self.graph = {
-            (0,0): Node((0,0))
-        }
+            (0,0): []
+        } # contains a list of connected node positions
 
     def update_graph(self,pos,walls):
         """
-        update graph based on walls
-        TODO: fucking need the heading
+        called after scan after Neato enters new space, before computing next step.
+        :param pos: tuple (x,y)
+        :param walls: walls always returns in global F B L R
         """
+        #
         # need an easy way to access nodes by position
-        self.graph[pos] = Node(pos)
+        if self.graph.has_key(pos):
+            # visited. we've been here. No need to update graph
+            pass
+        else:
+            # create dict
+            self.graph[pos] = []
+            if walls[0]:
+                self.graph[pos].append((pos[0], pos[1]+1))
+            if walls[1]:
+                self.graph[pos].append(pos[0], pos[1]-1)
+            if walls[2]:
+                self.graph[pos].append(pos[0]-1, pos[1])
+            if walls[3]:
+                self.graph[pos].append(pos[0]+1, pos[1])
+
 
 
 
