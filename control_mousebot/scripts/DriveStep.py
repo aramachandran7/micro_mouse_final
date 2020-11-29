@@ -89,10 +89,9 @@ class DriveStep(object):
 
         # error thresholds and constants
         self.unit_length = .18 # universal 1 meter unit length?
-        self.turn_error = .01
+        self.turn_error = .005
         self.path_center = .084
-        self.angular_scaler = 1.0
-        self.max_turn_speed = 1.0
+        self.max_turn_speed = self.speed/2
         self.angle_increaser = 1.0
         self.distance_threshold = .02
         self.scan_angle = 5
@@ -119,7 +118,7 @@ class DriveStep(object):
             motion.linear.x = 0
             self.speed_pub.publish(motion)
 
-            if math.fabs((angle_to_turn-self.theta_turned))<.005: # TODO variablize
+            if math.fabs((angle_to_turn-self.theta_turned))<self.turn_error:
                 return self.drive_forwards
             else:
                 return self.turn
