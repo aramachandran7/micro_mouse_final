@@ -264,7 +264,7 @@ class DriveStep(object):
         self.theta_turned = 0
         self.distance_traveled = 0
 
-    def drive_main(self, direction_to_drive, speed):
+    def drive(self, direction_to_drive, speed):
         # initial state of operation upon function call is turn
         self.reset_function(direction_to_drive, speed)
 
@@ -279,7 +279,10 @@ class DriveStep(object):
         return self.walls
     #    print("completed DriveStep. Idle State. Awaiting future command ...")
 
+    def speed_run(self):
+        pass
 
+        
     def convert_pose_to_xy_and_theta(self,pose):
         """ Convert pose (geometry_msgs.Pose) to a (x,y,yaw) tuple
         From helper_fns in warmup project
@@ -345,15 +348,15 @@ class DriveStep(object):
 if __name__ == '__main__':
     drive = DriveStep()
     for i in range(2):
-        drive.drive_main('F', 0.2)
+        drive.drive('F', 0.2)
     print("turning")
-    drive.drive_main('R', 0.2)
-    drive.drive_main('R', 0.2)
-    drive.drive_main('F', 0.2)
-    drive.drive_main('L', 0.2)
+    drive.drive('R', 0.2)
+    drive.drive('R', 0.2)
+    drive.drive('F', 0.2)
+    drive.drive('L', 0.2)
 
     #r = rospy.Rate(10)
     #while not rospy.is_shutdown():
     #    for i in range(14):
-    #        drive.drive_main('F', 0.2)
-    #    drive.drive_main('R', 0.2)
+    #        drive.drive('F', 0.2)
+    #    drive.drive('R', 0.2)
