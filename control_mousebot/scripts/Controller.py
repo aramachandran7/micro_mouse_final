@@ -17,15 +17,16 @@ def run():
     driver = DriveStep()
 
     # make first move, grab first data
-    walls = driver.drive('F', speed)
+    walls,pos = driver.drive('F', speed)
     graph.update_graph(pos, walls)
+    print(graph.graph)
     # blocking code while loop for mousebot reach center
-    while pos != center:
-
-        next_pos = MoveComputer.compute_next_move(graph, pos)
-        walls,pos = driver.drive(next_pos, speed) # updates walls, position
-        pos = next_pos
-        graph.update_graph(pos, walls)
+    # while pos != center:
+    #
+    #     next_pos = MoveComputer.compute_next_move(graph, pos)
+    #     walls,pos = driver.drive(next_pos, speed) # updates walls, position
+    #     pos = next_pos
+    #     graph.update_graph(pos, walls)
 
     # code for mousebot to reverse track back to starting point
 

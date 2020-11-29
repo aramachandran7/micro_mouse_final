@@ -96,6 +96,7 @@ class DriveStep(object):
         self.distance_threshold = .02
         self.scan_angle = 5
 
+        self.neato_pos = np.array((0,0,0))
 
         self.angles = {
             'F':0,
@@ -263,8 +264,26 @@ class DriveStep(object):
         self.theta_turned = 0
         self.distance_traveled = 0
 
-    def drive(self, direction_to_drive, speed):
+    def compute_direction(self, future_pos):
+        """
+        compute direction_to_drive and compute new self.neato_pos
+        """
+
+        heading_vector = np.array(future_pos)-np.array(self.neato_pos[0], self.neato_pos[1])
+        angle_to_turn = self.neato_pos[2] - math.atan2(heading_vector[0], heading_vector[1])
+        self.neato_pos = np.array((future_pos[0], future_pos[1], self.neato_pos[2]+angle_to_turn))
+        direction_dict = {
+            0.0: "F",
+            math.pi: "B",
+            math.pi/2: "L",
+            -math.pi/2: "R",
+        }
+        return direction_dict[angle_to_turn]
+
+
+    def drive(self, future_pos, speed):
         # initial state of operation upon function call is turn
+        direction_to_drive = self.compute_direction(future_pos)
         self.reset_function(direction_to_drive, speed)
 
         while not rospy.is_shutdown() and self.state != self.idle:
@@ -281,7 +300,7 @@ class DriveStep(object):
     def speed_run(self):
         pass
 
-        
+
     def convert_pose_to_xy_and_theta(self,pose):
         """ Convert pose (geometry_msgs.Pose) to a (x,y,yaw) tuple
         From helper_fns in warmup project

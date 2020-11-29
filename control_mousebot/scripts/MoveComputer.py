@@ -12,6 +12,7 @@ class MoveComputer2(Object):
         self.pos = None
         self.confidences = []
         self.center = np.array((7.5, 7.5)) # maze center
+        self.coef = 1.0
 
     def compute_next_move(self, graph, pos):
         """
@@ -31,7 +32,7 @@ class MoveComputer2(Object):
                 dp = np.dot(m_vec, guiding_vector) # get dot product
                 # multiply confidence by dot product
                 num_to_unknown = self.compute_unkown_distance(pos, i) # pass tuple, index
-                self.confidences[i] = dp*num_to_unknown # TODO: fix computation
+                self.confidences.append( dp*(self.coef/(1+num_to_unknown))) # TODO: fix computation
 
             # pick index of top confdince and get corresponding direction from self.graph
             return self.graph[pos][self.confidences.index(max(self.confidences))]
@@ -45,7 +46,7 @@ class MoveComputer2(Object):
         if !(self.graph.has_key(new_node)):
             return 0
         else:
-            for i, direction in self.graph[new_node]:
+            for i, direction in enumerate(self.graph[new_node]):
                 if direction != pos:
                     val = self.compute_unkown_distance(new_node, i)
 

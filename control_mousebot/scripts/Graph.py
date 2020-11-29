@@ -11,26 +11,19 @@ The robot being able to move between nodes represents a connection.
 
 """
 
-class Node(object):
-    def __init__(self,pos):
-        self.f = None
-        self.b = None
-        self.l = None
-        self.r = None
-
-
 class Graph2(object):
     def __init__(self):
 
         self.graph = {
-            (0,0): []
+            (0,0): [(0,1)]
+            # (4,10): [(4,9), (4,11)]
         } # contains a list of connected node positions
 
     def update_graph(self,pos,walls):
         """
         called after scan after Neato enters new space, before computing next step.
         :param pos: tuple (x,y)
-        :param walls: walls always returns in global F B L R
+        :param walls: walls always returns in global F B L R ex. []
         """
         #
         # need an easy way to access nodes by position
