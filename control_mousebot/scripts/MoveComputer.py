@@ -3,6 +3,7 @@ Objective - to compute the next move for the robot in the mapping phase given th
 
 design decisions -
 isolate heading of robot
+implement memoizaiton w/ memo table? 
 """
 import numpy as np
 import math
