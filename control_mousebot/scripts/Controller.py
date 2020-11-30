@@ -4,6 +4,7 @@
 from Graph import Graph2
 from MoveComputer import MoveComputer2
 from DriveStep import DriveStep
+import rospy
 
 
 
@@ -29,8 +30,8 @@ def run():
     target = (7.5, 7.5)
     print(graph.graph)
     # blocking code while loop for mousebot reach center
-    while pos != target:
-        print('movement!---------------------')
+    while pos != target and not rospy.is_shutdown():
+        print('movement!========================================================================')
         graph.update_graph(pos, walls)
         next_pos = MoveComputer.compute_next_move(graph, pos)
         print("move comptuer returned, ", next_pos)

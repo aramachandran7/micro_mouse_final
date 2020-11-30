@@ -279,12 +279,14 @@ class DriveStep(object):
         angle_to_turn = self.angle_diff(-math.atan2(heading_vector[0], heading_vector[1]), self.neato_pos[2])
         print("angle to turn: ", angle_to_turn, "heading_vector: ", heading_vector)
 
-        npos = (self.neato_pos[2]+angle_to_turn)
-        if math.fabs(npos) > math.pi:
-            if npos < 0:
-                npos = npos % -math.pi
-            elif npos > 0:
-                npos = npos % math.pi
+        npos = self.angle_normalize(self.neato_pos[2]+angle_to_turn)
+        print("npos1", npos)
+        # if math.fabs(npos) > math.pi:
+        #     if npos < 0:
+        #         npos += math.pi
+        #     elif npos > 0:
+        #         npos -= math.pi
+        #print("npos2", npos)
         self.neato_pos =  np.array((future_pos[0], future_pos[1], npos)) # %math.pi
 
 
@@ -343,6 +345,10 @@ class DriveStep(object):
                                 pose.orientation.w)
         angles = euler_from_quaternion(orientation_tuple)
         return (pose.position.x, pose.position.y, angles[2])
+    
+    def angle_normalize(self, z):
+        """ convenience function to map an angle to the range [-pi,pi] """
+        return math.atan2(math.sin(z), math.cos(z))
 
     def angle_diff(self, direction_to_drive, current_heading):
         """
@@ -353,8 +359,8 @@ class DriveStep(object):
             angle_diff(.1, 2*math.pi - .1) -> .2
             angle_diff(.1, .2+2*math.pi) -> -.1
         """
-        a = direction_to_drive
-        b = current_heading
+        a = self.angle_normalize(direction_to_drive)
+        b = self.angle_normalize(current_heading)
         d1 = a-b
         d2 = 2*math.pi - math.fabs(d1)
         if d1 > 0:
@@ -397,13 +403,13 @@ class DriveStep(object):
 
 if __name__ == '__main__':
     drive = DriveStep()
-    for i in range(2):
-        drive.drive('F', 0.2)
-    print("turning")
-    drive.drive('R', 0.2)
-    drive.drive('R', 0.2)
-    drive.drive('F', 0.2)
-    drive.drive('L', 0.2)
+#    for i in range(2):
+#        drive.drive('F', 0.2)
+#    print("turning")
+#    drive.drive('R', 0.2)
+#    drive.drive('R', 0.2)
+    drive.drive((0,1), 0.2)
+    drive.drive((0,0), 0.2)
 
     #r = rospy.Rate(10)
     #while not rospy.is_shutdown():
