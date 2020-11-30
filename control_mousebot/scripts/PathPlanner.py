@@ -9,12 +9,15 @@ class PathPlanner(object):
     def __init__(self):
         self.graph = None
         self.values = None
+        self.iterations = 0
+        self.max_iterations = 60
 
 
     def init_graph(self, graph): 
+        self.iterations = 0 # reset
         self.graph = graph.graph.copy() # create a copy of the graph to make edits to. 
         for key in self.graph.keys(): # create F G H values and None Parent for every node. 
-            self.graph[key] = {"cons": self.graph[key], "F": 0, "G": 0, "H": 0, "parent": None} 
+            self.graph[key] = {"conns": self.graph[key], "F": 0, "G": 0, "H": 0, "parent": None} 
 
 
     def a_star(self, graph, start=(0,0), target=(7,7)):
@@ -26,18 +29,29 @@ class PathPlanner(object):
         ol = [] # open list 
         cl = [] # closed list 
         ol.append(start)
-        while len(open_list)>0: 
+        while len(ol)>0: 
 
 
             # set current node as lowest f in the open list 
+            lowest_f = 10000
+            for i, node in enumerate(ol): 
+                if self.graph[node].f  < lowest_f: 
+                    CN = node
+                    i_lowest_f = i
 
 
             # remove CN from open list, move to closed
+            ol.pop(i_lowest_f)
+            # handle base cases or failure modes
+            if self.iterations > self.max_iterations: 
+                print("failed to complete before max iterations")
+                return self.return_path(CN)
 
-            # handle if the current node is the end 
+            if CN == target: 
+                return self.return_path(CN)                
 
             # generate all 8 children nodes surrounding CN , walkt through 
-            directions = []
+            directions = self.graph[CN]["conns"]
 
             for child in directions: 
                 # ensure child isn't on the closed list 
@@ -57,7 +71,16 @@ class PathPlanner(object):
 
                 # finall add the fucking kid to hte OL 
                 ol.append(child)
+            self.iterations += 1
 
+
+    def return_path(self, CN): 
+        path = []
+        current = CN 
+        while current.parent is not None: 
+            path.append(current)
+            current = self.graph[current].parent
+        return path[::-1] # reverse path 
 
 
     def pythag(self, child, end): 
