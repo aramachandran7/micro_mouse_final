@@ -27,20 +27,20 @@ class Graph2(object):
         """
         #
         # need an easy way to access nodes by position
-        if self.graph.has_key(pos):
+        if pos in self.graph.keys():
             # visited. we've been here. No need to update graph
             pass
         else:
             # create dict
             self.graph[pos] = []
-            if walls[0]:
+            if not (walls[0]):
                 self.graph[pos].append((pos[0], pos[1]+1))
-            if walls[1]:
-                self.graph[pos].append(pos[0], pos[1]-1)
-            if walls[2]:
-                self.graph[pos].append(pos[0]-1, pos[1])
-            if walls[3]:
-                self.graph[pos].append(pos[0]+1, pos[1])
+            if not (walls[1]):
+                self.graph[pos].append((pos[0], pos[1]-1))
+            if not (walls[2]):
+                self.graph[pos].append((pos[0]-1, pos[1]))
+            if not (walls[3]):
+                self.graph[pos].append((pos[0]+1, pos[1]))
 
 
 

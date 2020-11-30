@@ -91,7 +91,7 @@ class DriveStep(object):
         self.unit_length = .18 # universal 1 meter unit length?
         self.turn_error = .005
         self.path_center = .084
-        self.max_turn_speed = self.speed/2
+        self.max_turn_speed = None
         self.angle_increaser = 1.0
         self.distance_threshold = .02
         self.scan_angle = 5
@@ -224,7 +224,7 @@ class DriveStep(object):
             self.skew = self.compute_skew(270)
         else:
             # No walls found, cannot correct orientation
-            print('No Side Walls Found')
+            #print('No Side Walls Found')
             self.skew = None
 
         if self.walls["F"]:
@@ -246,11 +246,12 @@ class DriveStep(object):
         # compute distance traveled in the direction you care about.
 
         # absolute value distance calc  - TODO: Fix
-        self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
+        if self.odom_start is not None:
+            self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
 
-        # compute theta turned based off original heading.
-        self.theta_turned = self.angle_diff(self.yaw_odom, self.odom_start[2])
-        # self.theta_turned = self.yaw_odom-self.odom_start[2]
+            # compute theta turned based off original heading.
+            self.theta_turned = self.angle_diff(self.yaw_odom, self.odom_start[2])
+            # self.theta_turned = self.yaw_odom-self.odom_start[2]
 
 
 
@@ -263,23 +264,53 @@ class DriveStep(object):
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
         self.theta_turned = 0
         self.distance_traveled = 0
+        self.max_turn_speed = 2.0
 
     def compute_direction(self, future_pos):
         """
         compute direction_to_drive and compute new self.neato_pos
-        """
 
-        heading_vector = np.array(future_pos)-np.array(self.neato_pos[0], self.neato_pos[1])
-        angle_to_turn = self.neato_pos[2] - math.atan2(heading_vector[0], heading_vector[1])
-        self.neato_pos = np.array((future_pos[0], future_pos[1], self.neato_pos[2]+angle_to_turn))
+        future_pos = 1,4
+        neato_pos = 1,3
+        """
+        print("neato_pos, " , self.neato_pos)
+        heading_vector = np.array(future_pos)-np.array((self.neato_pos[0], self.neato_pos[1]))
+        # angle_to_turn = self.neato_pos[2] - math.atan2(heading_vector[0], heading_vector[1])
+        angle_to_turn = self.angle_diff(-math.atan2(heading_vector[0], heading_vector[1]), self.neato_pos[2])
+        print("angle to turn: ", angle_to_turn, "heading_vector: ", heading_vector)
+
+        npos = (self.neato_pos[2]+angle_to_turn)
+        if math.fabs(npos) > math.pi:
+            if npos < 0:
+                npos = npos % -math.pi
+            elif npos > 0:
+                npos = npos % math.pi
+        self.neato_pos =  np.array((future_pos[0], future_pos[1], npos)) # %math.pi
+
+
         direction_dict = {
             0.0: "F",
             math.pi: "B",
+            -math.pi: "B",
             math.pi/2: "L",
             -math.pi/2: "R",
         }
         return direction_dict[angle_to_turn]
 
+    def compute_walls(self):
+        """ returns walls list [] global F B R L (same as NESW)"""
+        print("self.neato_pos2", self.neato_pos[2])
+        walls = []
+        if self.neato_pos[2] == 0.0:            # Facing Forwards
+            walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
+        elif self.neato_pos[2] == -math.pi/2:    # Facing Right
+            walls = [self.walls["L"], self.walls["R"], False, self.walls["F"]]
+        elif (math.fabs(self.neato_pos[2]) == math.pi) :  # Facing Backwards, with some play
+            walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
+            print('it was facing backwards. ')
+        elif self.neato_pos[2] == math.pi/2:     # Facing Left
+            walls = [self.walls["R"], self.walls["L"], self.walls["F"], False]
+        return walls
 
     def drive(self, future_pos, speed):
         # initial state of operation upon function call is turn
@@ -294,7 +325,8 @@ class DriveStep(object):
         motion.linear.x = 0
         motion.angular.z = 0
         self.speed_pub.publish(motion)
-        return self.walls
+        walls = self.compute_walls()
+        return walls
     #    print("completed DriveStep. Idle State. Awaiting future command ...")
 
     def speed_run(self):

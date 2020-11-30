@@ -5,14 +5,16 @@ design decisions -
 isolate heading of robot
 """
 import numpy as np
+import math
 
-class MoveComputer2(Object):
+class MoveComputer2(object):
     def __init__(self):
         self.graph = None
         self.pos = None
         self.confidences = []
-        self.center = np.array((7.5, 7.5)) # maze center
+        self.target = np.array((7.5, 7.5)) # maze target
         self.coef = 1.0
+        self.debug = True
 
     def compute_next_move(self, graph, pos):
         """
@@ -22,19 +24,30 @@ class MoveComputer2(Object):
         self.graph = graph.graph # graph dict from graph object
         self.pos = np.array(pos) # neato position
         self.confidences = []
-        guiding_vector = self.center-self.pos
+        guiding_vector = self.target-self.pos
 
         if len(self.graph[pos])== 1:
             return self.graph[pos][0]
         else:
             for i, direction in enumerate(self.graph[pos]): # walk through options, compute confidences
+                print('evaluating direciton for position: ----------')
+                print(pos)
                 m_vec = np.array(direction) - self.pos
-                dp = np.dot(m_vec, guiding_vector) # get dot product
+                dp = math.fabs(np.dot(m_vec, guiding_vector)) # get dot product
+                if self.debug:
+                    print("dotproduct for %s, %s" %(i, dp))
                 # multiply confidence by dot product
                 num_to_unknown = self.compute_unkown_distance(pos, i) # pass tuple, index
-                self.confidences.append( dp*(self.coef/(1+num_to_unknown))) # TODO: fix computation
+                if self.debug:
+                    print("num_to_unknown for %s, %s" %(i, num_to_unknown))
 
+                if num_to_unknown is not None:
+                    self.confidences.append(dp*(self.coef/(1+num_to_unknown))) # TODO: fix computation
+                else:
+                    self.confidences.append(0.0) # there is only a dead end in this direction
             # pick index of top confdince and get corresponding direction from self.graph
+            if self.debug:
+                print('current pos: %s, directions: %s, confidences: %s' %(pos, self.graph[pos], self.confidences))
             return self.graph[pos][self.confidences.index(max(self.confidences))]
 
 
@@ -43,10 +56,12 @@ class MoveComputer2(Object):
 
         new_node = self.graph[pos][index] # returns tuple
 
-        if !(self.graph.has_key(new_node)):
+        if not new_node in self.graph.keys():
             return 0
         else:
+            print("connections to pos %s" %(self.graph[new_node]))
             for i, direction in enumerate(self.graph[new_node]):
+                print("pos: %s, i: %s" %(new_node, i))
                 if direction != pos:
                     val = self.compute_unkown_distance(new_node, i)
 
@@ -58,7 +73,7 @@ class MoveComputer2(Object):
 
 
 
-class MoveComputer(Object):
+class MoveComputer(object):
     """ OLD: """
     def __init__(self):
         self.confidences = [0.0, 0.0, 0.0, 0.0] # f b l r
