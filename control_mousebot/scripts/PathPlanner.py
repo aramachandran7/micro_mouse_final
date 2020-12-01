@@ -3,14 +3,20 @@
 pseudo code from article : 
 https://gist.github.com/ryancollingwood/32446307e976a11a1185a5394d6657bc
 
+
+
+A star pseudocode 
+
+you have an open list and closed list 
 """
 
 class PathPlanner(object):
-    def __init__(self):
+    def __init__(self, maze_sl=16):
         self.graph = None
         self.values = None
         self.iterations = 0
-        self.max_iterations = 60
+        self.max_iterations = maze_sl**2 / 2
+        self.debug = True
 
 
     def init_graph(self, graph): 
@@ -31,7 +37,6 @@ class PathPlanner(object):
         ol.append(start)
         while len(ol)>0: 
 
-
             # set current node as lowest f in the open list 
             lowest_f = 10000
             for i, node in enumerate(ol): 
@@ -41,7 +46,7 @@ class PathPlanner(object):
 
 
             # remove CN from open list, move to closed
-            ol.pop(i_lowest_f)
+            ol.pop(i_lowest_f) 
             # handle base cases or failure modes
             if self.iterations > self.max_iterations: 
                 print("failed to complete before max iterations")
@@ -53,25 +58,28 @@ class PathPlanner(object):
             # generate all 8 children nodes surrounding CN , walkt through 
             directions = self.graph[CN]["conns"]
 
-            for child in directions: 
-                # ensure child isn't on the closed list 
+            for child in directions: # CN is parent 
 
+                # ensure child isn't on the closed list 
                 if child in cl: 
                     continue 
+
                 # compute f g h
+                self.graph[child].g = self.graph[CN].g + 1
 
-                self.graph[child].g = CN.g + 1
-                self.graph[child].h = self.pythag(child,end)
+                if len([open_node for open_node in ol if child == open_node and self.graph[child].g > self.graph[open_node].g]) > 0:
+                    continue
+
+                self.graph[child].h = self.pythag(child,target)
                 self.graph[child].f = self.graph[child].h + self.graph[child].g
-
-
-                for open_node in ol: 
-                    if child == open_node and self.graph[child].g > self.graph[open_node].g: 
-                        continue
-
-                # finall add the fucking kid to hte OL 
+                
+                if self.debug: 
+                    print("appended child: ", child, " to OL")
                 ol.append(child)
+
             self.iterations += 1
+            if self.debug: 
+                print("iterations: ", self.iterations, ", OL: ", ol)
 
 
     def return_path(self, CN): 
@@ -83,9 +91,9 @@ class PathPlanner(object):
         return path[::-1] # reverse path 
 
 
-    def pythag(self, child, end): 
+    def pythag(self, child, target): 
         # asqured plus bsqured lit
-        pass 
+        return (target[0]-child[0])**2 + (target[1]-child[1])**2 
 
 
     def consolidate_path(self, path): 

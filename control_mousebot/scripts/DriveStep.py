@@ -98,28 +98,28 @@ class DriveStep(object):
 
         self.neato_pos = np.array((0,0,0))
 
-        self.angles = {
-            'F':0,
-            'B':math.pi,
-            'L':math.pi/2,
-            'R':-math.pi/2,
-        }
+        # self.angles = {
+        #     'F':0,
+        #     'B':math.pi,
+        #     'L':math.pi/2,
+        #     'R':-math.pi/2,
+        # }
 
     def turn(self):
         #print("Turning...")
-        if self.direction_to_drive == 'F':
+        if self.direction_to_drive == 0.0: # if you're straight up forwards?
             return self.drive_forwards
         else:
             # compute angle to turn (closest rotation angle from a to b)
-            angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
+            # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
 
             motion = Twist()
-            x = angle_to_turn-self.theta_turned
+            x = self.direction_to_drive-self.theta_turned
             motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*x))-self.max_turn_speed
             motion.linear.x = 0
             self.speed_pub.publish(motion)
 
-            if math.fabs((angle_to_turn-self.theta_turned))<self.turn_error:
+            if math.fabs((self.direction_to_drive-self.theta_turned))<self.turn_error:
                 return self.drive_forwards
             else:
                 return self.turn
@@ -281,23 +281,17 @@ class DriveStep(object):
 
         npos = self.angle_normalize(self.neato_pos[2]+angle_to_turn)
         print("npos1", npos)
-        # if math.fabs(npos) > math.pi:
-        #     if npos < 0:
-        #         npos += math.pi
-        #     elif npos > 0:
-        #         npos -= math.pi
-        #print("npos2", npos)
         self.neato_pos =  np.array((future_pos[0], future_pos[1], npos)) # %math.pi
 
-
-        direction_dict = {
-            0.0: "F",
-            math.pi: "B",
-            -math.pi: "B",
-            math.pi/2: "L",
-            -math.pi/2: "R",
-        }
-        return direction_dict[angle_to_turn]
+        return angle_to_turn
+        # direction_dict = {
+        #     0.0: "F",
+        #     math.pi: "B",
+        #     -math.pi: "B",
+        #     math.pi/2: "L",
+        #     -math.pi/2: "R",
+        # }
+        # return direction_dict[angle_to_turn]
 
     def compute_walls(self):
         """ returns walls list [] global F B R L (same as NESW)"""
