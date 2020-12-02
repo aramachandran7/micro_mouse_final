@@ -15,7 +15,7 @@ class MoveComputer2(object):
         self.confidences = []
         self.target = np.array((7.5, 7.5)) # maze target
         self.coef = 1.0
-        self.debug = True
+        self.debug = False
 
     def compute_next_move(self, graph, pos):
         """
@@ -26,13 +26,11 @@ class MoveComputer2(object):
         self.pos = np.array(pos) # neato position
         self.confidences = []
         guiding_vector = self.target-self.pos
-
+        print("Current Position     ", pos)
         if len(self.graph[pos])== 1:
             return self.graph[pos][0]
         else:
             for i, direction in enumerate(self.graph[pos]): # walk through options, compute confidences
-                print('evaluating direciton for position: ----------')
-                print(pos)
                 m_vec = np.array(direction) - self.pos
                 dp = math.fabs(np.dot(m_vec, guiding_vector)) # get dot product
                 if self.debug:
@@ -60,9 +58,9 @@ class MoveComputer2(object):
         if not new_node in self.graph.keys():
             return 0
         else:
-            print("connections to pos %s" %(self.graph[new_node]))
+        #    print("connections to pos %s" %(self.graph[new_node]))
             for i, direction in enumerate(self.graph[new_node]):
-                print("pos: %s, i: %s" %(new_node, i))
+        #        print("pos: %s, i: %s" %(new_node, i))
                 if direction != pos:
                     val = self.compute_unkown_distance(new_node, i)
 

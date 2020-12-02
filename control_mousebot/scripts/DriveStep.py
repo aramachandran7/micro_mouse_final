@@ -59,6 +59,7 @@ class DriveStep(object):
         self.scan = []
         self.walls = {
             "F": False,
+            "B": False,
             "R": False,
             "L": False
         }
@@ -89,7 +90,7 @@ class DriveStep(object):
 
         # error thresholds and constants
         self.unit_length = .18 # universal 1 meter unit length?
-        self.turn_error = .005
+        self.turn_error = .1
         self.path_center = .084
         self.max_turn_speed = None
         self.angle_increaser = 1.0
@@ -112,14 +113,15 @@ class DriveStep(object):
         else:
             # compute angle to turn (closest rotation angle from a to b)
             # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
-
             motion = Twist()
             x = self.direction_to_drive-self.theta_turned
             motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*x))-self.max_turn_speed
             motion.linear.x = 0
             self.speed_pub.publish(motion)
+            #print("direction to drive:   ", self.direction_to_drive)
+            
 
-            if math.fabs((self.direction_to_drive-self.theta_turned))<self.turn_error:
+            if math.fabs(x) < self.turn_error:
                 return self.drive_forwards
             else:
                 return self.turn
@@ -204,6 +206,13 @@ class DriveStep(object):
 
         return distance, angle
 
+    def get_walls(self):
+        scan_angle = 15
+        self.walls["F"] = all((i >= .055 and i <= .12) for i in (self.scan[-2:] + self.scan[:3]))
+        self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
+        self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
+        self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
+
     def compute_side_distances(self):
         """
         computes distances from sides based on self.scan LR averages
@@ -211,11 +220,6 @@ class DriveStep(object):
         we should also compute the angle the robot is off,  if there is a wall.
 
         """
-        scan_angle = 15
-        self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
-        self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
-        self.walls["F"] = all((i >= .055 and i <= .12) for i in (self.scan[-2:] + self.scan[:3]))
-
         if self.walls["L"]:
             # Follow Left wall for straight path
             self.skew = self.compute_skew(90)
@@ -238,13 +242,13 @@ class DriveStep(object):
     def scan_recieved(self, msg):
         """ callback for /scan"""
         self.scan = msg.ranges
+        self.get_walls()
         self.compute_side_distances()
 
     def odom_recieved(self, msg):
         """ callback for /odom"""
         self.x_odom, self.y_odom, self.yaw_odom = self.convert_pose_to_xy_and_theta(msg.pose.pose)
         # compute distance traveled in the direction you care about.
-
         # absolute value distance calc  - TODO: Fix
         if self.odom_start is not None:
             self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
@@ -273,16 +277,17 @@ class DriveStep(object):
         future_pos = 1,4
         neato_pos = 1,3
         """
-        print("neato_pos, " , self.neato_pos)
+        #print("neato_pos, " , self.neato_pos)
         heading_vector = np.array(future_pos)-np.array((self.neato_pos[0], self.neato_pos[1]))
         # angle_to_turn = self.neato_pos[2] - math.atan2(heading_vector[0], heading_vector[1])
         angle_to_turn = self.angle_diff(-math.atan2(heading_vector[0], heading_vector[1]), self.neato_pos[2])
-        print("angle to turn: ", angle_to_turn, "heading_vector: ", heading_vector)
+        #print("angle to turn: ", angle_to_turn, "heading_vector: ", heading_vector)
 
         npos = self.angle_normalize(self.neato_pos[2]+angle_to_turn)
-        print("npos1", npos)
+        #print("npos1", npos)
         self.neato_pos =  np.array((future_pos[0], future_pos[1], npos)) # %math.pi
 
+        print("turning:  ", angle_to_turn)
         return angle_to_turn
         # direction_dict = {
         #     0.0: "F",
@@ -295,16 +300,18 @@ class DriveStep(object):
 
     def compute_walls(self):
         """ returns walls list [] global F B R L (same as NESW)"""
-        print("self.neato_pos2", self.neato_pos[2])
+        #print("self.neato_orient", self.neato_pos[2]/math.pi)
         walls = []
-        if self.neato_pos[2] == 0.0:            # Facing Forwards
+        Angular_error = 0.1
+
+        # must return walls (F B L R) in Bools
+        if 0.0-Angular_error < self.neato_pos[2] < 0.0+Angular_error:            # Facing Forwards
             walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
-        elif self.neato_pos[2] == -math.pi/2:    # Facing Right
+        elif -math.pi/2-Angular_error < self.neato_pos[2] < -math.pi/2+Angular_error:    # Facing Right
             walls = [self.walls["L"], self.walls["R"], False, self.walls["F"]]
-        elif (math.fabs(self.neato_pos[2]) == math.pi) :  # Facing Backwards, with some play
+        elif math.pi-Angular_error < math.fabs(self.neato_pos[2]) < math.pi+Angular_error:  # Facing Backwards, with some play
             walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
-            print('it was facing backwards. ')
-        elif self.neato_pos[2] == math.pi/2:     # Facing Left
+        elif math.pi/2-Angular_error < self.neato_pos[2] < math.pi/2+Angular_error:    # Facing Left
             walls = [self.walls["R"], self.walls["L"], self.walls["F"], False]
         return walls
 
