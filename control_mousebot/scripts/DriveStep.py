@@ -51,6 +51,7 @@ class DriveStep(object):
         self.yaw_odom = 0.0
         self.distance_traveled = None
         self.theta_turned = None
+        self.theta_turned2 = None
         self.odom_start = None
 
 
@@ -90,7 +91,7 @@ class DriveStep(object):
 
         # error thresholds and constants
         self.unit_length = .18 # universal 1 meter unit length?
-        self.turn_error = .1
+        self.turn_error = .01
         self.path_center = .084
         self.max_turn_speed = None
         self.angle_increaser = 1.0
@@ -98,6 +99,7 @@ class DriveStep(object):
         self.scan_angle = 5
 
         self.neato_pos = np.array((0,0,0))
+        self.states_counter = 0
 
         # self.angles = {
         #     'F':0,
@@ -113,17 +115,31 @@ class DriveStep(object):
         else:
             # compute angle to turn (closest rotation angle from a to b)
             # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
+            self.states_counter += 1
+            # if self.states_counter % 1000:
+            #     print("yaw_odom: ", self.yaw_odom)
             motion = Twist()
-            x = self.direction_to_drive-self.theta_turned
-            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*x))-self.max_turn_speed
+            angle_to_turn = self.direction_to_drive - self.theta_turned2
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*angle_to_turn))-self.max_turn_speed
             motion.linear.x = 0
-            self.speed_pub.publish(motion)
             #print("direction to drive:   ", self.direction_to_drive)
-            
 
-            if math.fabs(x) < self.turn_error:
+            if math.fabs(self.theta_turned2)>math.fabs(self.direction_to_drive):
+
+                motion.angular.z *= -1.0
+                self.speed_pub.publish(motion)
+
+                # return self.drive_forwards
+                #if self.states_counter%100:
+                    # print("overshot angle turn!")
+                    # print("theta_turned: ", self.theta_turned, " theta_turned2 (angle_diff): ", self.theta_turned2)
+                    # print("Minimum Angle Turned:      ", angle_to_turn)
+
+            if math.fabs(angle_to_turn) < self.turn_error:
+                #print("Minimum Angle Turned:      ", angle_to_turn)
                 return self.drive_forwards
             else:
+                self.speed_pub.publish(motion)
                 return self.turn
 
     def drive_forwards(self):
@@ -252,10 +268,12 @@ class DriveStep(object):
         # absolute value distance calc  - TODO: Fix
         if self.odom_start is not None:
             self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
-
+            # print("yaw_odom: ", self.yaw_odom)
             # compute theta turned based off original heading.
-            self.theta_turned = self.angle_diff(self.yaw_odom, self.odom_start[2])
-            # self.theta_turned = self.yaw_odom-self.odom_start[2]
+            self.theta_turned2 = self.angle_diff(self.yaw_odom, self.odom_start[2])
+            self.theta_turned = self.yaw_odom-self.odom_start[2]
+            print("theta_turned2: ", self.theta_turned2)
+
 
 
 
@@ -346,7 +364,7 @@ class DriveStep(object):
                                 pose.orientation.w)
         angles = euler_from_quaternion(orientation_tuple)
         return (pose.position.x, pose.position.y, angles[2])
-    
+
     def angle_normalize(self, z):
         """ convenience function to map an angle to the range [-pi,pi] """
         return math.atan2(math.sin(z), math.cos(z))
