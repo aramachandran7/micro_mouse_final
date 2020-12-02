@@ -83,7 +83,7 @@ class DriveStep(object):
         self.speed_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         # call params
-        self.direction_to_drive = None
+        self.direction_to_drive = None # this is an angle value to turn 
         self.current_heading = None
         self.speed = None
 
