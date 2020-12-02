@@ -28,15 +28,17 @@ def run():
     # graph.update_graph(pos, walls)
 
     target = (7.5, 7.5)
-    print(graph.graph)
+    #print(graph.graph)
     # blocking code while loop for mousebot reach center
     while pos != target and not rospy.is_shutdown():
-        print('movement!========================================================================')
+        print('movement!=======================================================================')
+        print(walls)
         graph.update_graph(pos, walls)
         next_pos = MoveComputer.compute_next_move(graph, pos)
-        print("move comptuer returned, ", next_pos)
+        print("Moving to:   ", next_pos)
         walls = driver.drive(next_pos, speed) # updates walls, position
         pos = next_pos
+        print(' ')
 
     # code for mousebot to reverse track back to starting point
 
