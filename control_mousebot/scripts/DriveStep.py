@@ -107,6 +107,8 @@ class DriveStep(object):
 
         self.neato_pos = np.array((0,0,0))
         self.states_counter = 0
+        self.d_to_key = None
+        self.kp_side = None
 
         # self.angles = {
         #     'F':0,
@@ -114,13 +116,19 @@ class DriveStep(object):
         #     'L':math.pi/2,
         #     'R':-math.pi/2,
         # }
+
+
     def LIDAR_based_angle(self):
-        if self.walls['L']:
-            angle_skew = self.compute_skew(90)[1] - 90
+        if self.walls['B']:
+            angle_skew = np.deg2rad(self.compute_skew(180)[1])
+
+        elif self.walls['L']:
+            angle_skew = np.deg2rad(self.compute_skew(90)[1] - 90)
         elif self.walls['R']:
-            angle_skew = self.compute_skew(270)[1] + 90
-        elif self.walls['B']:
-            angle_skew = self.compute_skew(180)[1] - 180
+            angle_skew = np.deg2rad(self.compute_skew(270)[1] + 90)
+        else:
+            return None
+        print("Angle Skew:      ", angle_skew)
         return angle_skew
 
     def turn(self):
@@ -131,20 +139,18 @@ class DriveStep(object):
             # compute angle to turn (closest rotation angle from a to b)
             # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
 
-            if math.fabs(self.direction_to_drive - self.theta_turned2) < .5:
+            if math.fabs(self.direction_to_drive - self.theta_turned2) < .3:
                 # if turning the last bit, use LIDAR
                 angle_to_turn = self.LIDAR_based_angle()
             else:
                 # It is OK to use encoders for the majority of the turn
                 angle_to_turn = self.direction_to_drive - self.theta_turned2
 
-
-
             motion = Twist()
             motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*angle_to_turn))-self.max_turn_speed
             motion.linear.x = 0
 
-            if angle_to_turn <= self.turn_cutoff:
+            if math.fabs(angle_to_turn) < self.turn_cutoff:
                 return self.drive_forwards
             else:
                 self.speed_pub.publish(motion)
@@ -193,7 +199,8 @@ class DriveStep(object):
                 return self.idle
             else:
                 return self.drive_forwards
-        elif self.d_to_key is not None:
+        elif (math.fabs(self.distance_traveled/self.unit_length)>0.75) and (self.d_to_key is not None): # traveled most of the way and there is a keypoint
+            print("using keypoint (%s) on %s side " %(self.kp_side, self.d_to_key))
             if math.fabs(self.d_to_key - self.path_center)<self.distance_threshold:
                 return self.idle
             else:
@@ -222,11 +229,13 @@ class DriveStep(object):
             for i in reversed(range(90)):
                 if  self.scan[i]>= .055 and self.scan[i] <= .14:
                     # you've found your keypoint, compute the d_to_key assumign bot is centered
+                    self.kp_side = "L"
                     return math.sqrt(self.scan[i]**2 - self.path_center**2)
         elif not self.walls['R']:
             for i in (range(270,360)):
                 if self.scan[i]>= .055 and self.scan[i] <= .14:
                     # you've found your keypoint, compute the d_to_key assumign bot is centered
+                    self.kp_side = "R"
                     return math.sqrt(self.scan[i]**2 - self.path_center**2)
         return None
 
