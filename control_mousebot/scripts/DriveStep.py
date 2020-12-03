@@ -19,6 +19,12 @@ relevant lidar data available
 --> motivation for 2nd change is extra turn quality checking redundancy,
 should be fixed if drive_forwards is good.
 
+
+in-maze robustness improvements:
+loren - turning parallel to wall skew calcualations
+adi - drive straight - chanigng front walls scanning distance, look for
+keypoints on left and right to adjust translation position
+
 """
 import rospy
 import time
@@ -70,6 +76,7 @@ class DriveStep(object):
         "front_wall": None,
         }
         self.skew = None
+        self.angle_skew = None
 
         self.angle_off = 0.0
 
@@ -85,13 +92,13 @@ class DriveStep(object):
         self.speed_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         # call params
-        self.direction_to_drive = None # this is an angle value to turn 
+        self.direction_to_drive = None # this is an angle value to turn
         self.current_heading = None
         self.speed = None
 
         # error thresholds and constants
         self.unit_length = .18 # universal 1 meter unit length?
-        self.turn_error = .01
+        self.turn_cutoff = .01
         self.path_center = .084
         self.max_turn_speed = None
         self.angle_increaser = 1.0
@@ -107,6 +114,14 @@ class DriveStep(object):
         #     'L':math.pi/2,
         #     'R':-math.pi/2,
         # }
+    def LIDAR_based_angle(self):
+        if self.walls['L']:
+            angle_skew = self.compute_skew(90)[1] - 90
+        elif self.walls['R']:
+            angle_skew = self.compute_skew(270)[1] + 90
+        elif self.walls['B']:
+            angle_skew = self.compute_skew(180)[1] - 180
+        return angle_skew
 
     def turn(self):
         #print("Turning...")
@@ -115,28 +130,21 @@ class DriveStep(object):
         else:
             # compute angle to turn (closest rotation angle from a to b)
             # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
-            self.states_counter += 1
-            # if self.states_counter % 1000:
-            #     print("yaw_odom: ", self.yaw_odom)
+
+            if math.fabs(self.direction_to_drive - self.theta_turned2) < .5:
+                # if turning the last bit, use LIDAR
+                angle_to_turn = self.LIDAR_based_angle()
+            else:
+                # It is OK to use encoders for the majority of the turn
+                angle_to_turn = self.direction_to_drive - self.theta_turned2
+
+
+
             motion = Twist()
-            angle_to_turn = self.direction_to_drive - self.theta_turned2
             motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*angle_to_turn))-self.max_turn_speed
             motion.linear.x = 0
-            #print("direction to drive:   ", self.direction_to_drive)
 
-            if math.fabs(self.theta_turned2)>math.fabs(self.direction_to_drive):
-
-                motion.angular.z *= -1.0
-                self.speed_pub.publish(motion)
-
-                # return self.drive_forwards
-                #if self.states_counter%100:
-                    # print("overshot angle turn!")
-                    # print("theta_turned: ", self.theta_turned, " theta_turned2 (angle_diff): ", self.theta_turned2)
-                    # print("Minimum Angle Turned:      ", angle_to_turn)
-
-            if math.fabs(angle_to_turn) < self.turn_error:
-                #print("Minimum Angle Turned:      ", angle_to_turn)
+            if angle_to_turn <= self.turn_cutoff:
                 return self.drive_forwards
             else:
                 self.speed_pub.publish(motion)
@@ -185,6 +193,11 @@ class DriveStep(object):
                 return self.idle
             else:
                 return self.drive_forwards
+        elif self.d_to_key is not None:
+            if math.fabs(self.d_to_key - self.path_center)<self.distance_threshold:
+                return self.idle
+            else:
+                return self.drive_forwards
         else:
             if math.fabs(self.unit_length - self.distance_traveled) < self.distance_threshold:
                 return self.idle
@@ -197,10 +210,26 @@ class DriveStep(object):
 
 
     def pol2cart(self, d, theta):
-        """helper function for converting cartesian coordinates to polar coordinates"""
+        #helper function for converting cartesian coordinates to polar coordinates
+
         x = d * math.cos(math.radians(theta))
         y = d * math.sin(math.radians(theta))
         return x, y
+
+    def compute_keypoints(self):
+        # TODO: adjust angle ranges and distance ranges for L and R
+        if not self.walls['L']:
+            for i in reversed(range(90)):
+                if  self.scan[i]>= .055 and self.scan[i] <= .14:
+                    # you've found your keypoint, compute the d_to_key assumign bot is centered
+                    return math.sqrt(self.scan[i]**2 - self.path_center**2)
+        elif not self.walls['R']:
+            for i in (range(270,360)):
+                if self.scan[i]>= .055 and self.scan[i] <= .14:
+                    # you've found your keypoint, compute the d_to_key assumign bot is centered
+                    return math.sqrt(self.scan[i]**2 - self.path_center**2)
+        return None
+
 
     def compute_skew(self, center):
         scan_angle = 15
@@ -224,7 +253,7 @@ class DriveStep(object):
 
     def get_walls(self):
         scan_angle = 15
-        self.walls["F"] = all((i >= .055 and i <= .12) for i in (self.scan[-2:] + self.scan[:3]))
+        self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
         self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
         self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
         self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
@@ -236,6 +265,9 @@ class DriveStep(object):
         we should also compute the angle the robot is off,  if there is a wall.
 
         """
+
+        self.d_to_key = self.compute_keypoints() # called (and reset) on every lidar scan
+
         if self.walls["L"]:
             # Follow Left wall for straight path
             self.skew = self.compute_skew(90)
@@ -272,7 +304,7 @@ class DriveStep(object):
             # compute theta turned based off original heading.
             self.theta_turned2 = self.angle_diff(self.yaw_odom, self.odom_start[2])
             self.theta_turned = self.yaw_odom-self.odom_start[2]
-            print("theta_turned2: ", self.theta_turned2)
+            #print("theta_turned2: ", self.theta_turned2)
 
 
 

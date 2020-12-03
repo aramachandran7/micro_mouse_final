@@ -14,8 +14,9 @@ class MoveComputer2(object):
         self.pos = None
         self.confidences = []
         self.target = np.array((7.5, 7.5)) # maze target
-        self.coef = 1.0
-        self.debug = False
+        self.debug = True
+        self.coef = 1
+        # self.dp_coef = 1.0
 
     def compute_next_move(self, graph, pos):
         """
@@ -32,22 +33,24 @@ class MoveComputer2(object):
         else:
             for i, direction in enumerate(self.graph[pos]): # walk through options, compute confidences
                 m_vec = np.array(direction) - self.pos
-                dp = math.fabs(np.dot(m_vec, guiding_vector)) # get dot product
-                if self.debug:
-                    print("dotproduct for %s, %s" %(i, dp))
+                dp = ((np.dot(m_vec, guiding_vector)) + 7.5)/15 # get dot product
+                # if self.debug:
+                #     print("dotproduct for %s, %s" %(direction, dp))
                 # multiply confidence by dot product
                 num_to_unknown = self.compute_unkown_distance(pos, i) # pass tuple, index
                 if self.debug:
-                    print("num_to_unknown for %s, %s" %(i, num_to_unknown))
+                    print("%s: num_to_unknown: %s, dp: %s, m_vec: %s, gv: %s" %(direction, num_to_unknown, dp, m_vec, guiding_vector))
 
                 if num_to_unknown is not None:
-                    self.confidences.append(dp*(self.coef/(1+num_to_unknown))) # TODO: fix computation
+                    self.confidences.append(dp*(self.coef/(1+(num_to_unknown*2)))) # TODO: fix computation
                 else:
                     self.confidences.append(0.0) # there is only a dead end in this direction
             # pick index of top confdince and get corresponding direction from self.graph
             if self.debug:
                 print('current pos: %s, directions: %s, confidences: %s' %(pos, self.graph[pos], self.confidences))
             return self.graph[pos][self.confidences.index(max(self.confidences))]
+
+        self.publish_vector(guiding_vector[0], guiding_vector[1])
 
 
     def compute_unkown_distance(self, pos, index):

@@ -10,7 +10,7 @@ import rospy
 
 def run():
     # setting constants
-    speed = 0.2
+    speed = 0.15
     pos = (0,0)
     walls = None
 

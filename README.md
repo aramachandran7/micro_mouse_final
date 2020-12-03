@@ -1,13 +1,14 @@
 # micro_mouse_final
 Comprobo final project featuring SLAM, maze traversal + path planning, robot dynamics with Gazebo &amp; ROS
-
+##todos
+de-acceleration
 
 
 ## Week by Week Goals
 
 Week 1: Working robot model in gazebo, working base maze map. Get the robot to drive straight for a distance constrained by the maze walls, and modularize the code. ROS setup, 3D modeling, and controls.
 
-Week 2: Make note of and have the robot recognize dead-ends, intersections, and typical maze characteristics. Discuss with Paul on simultaneous localization within the map context, (moving towards the maze destination), and map/context building. Be able to represent the robot’s position within a discrete matrix. Depending on our implementation, be able to represent map?
+Week 2: Make note of and have the robot recognize dead-ends, intersections, and typical maze characteristics. Discuss with Paul on simultaneous localization  within the map context, (moving towards the maze destination), and map/context building. Be able to represent the robot’s position within a discrete matrix. Depending on our implementation, be able to represent map?
 
 Week 3: Completing mapping & SLAM. Beginning work on path optimization Robot should be able to reach the center of the map with SLAM, and should be able to get back using a different route. .  
 
