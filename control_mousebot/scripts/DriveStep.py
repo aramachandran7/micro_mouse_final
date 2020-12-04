@@ -96,7 +96,7 @@ class DriveStep(object):
 
         # error thresholds and constants
         self.unit_length = .18 # universal 1 meter unit length?
-        self.turn_cutoff = .01
+        self.turn_cutoff = .15
         self.path_center = .084
         self.max_turn_speed = None
         self.angle_increaser = 1.0
@@ -114,13 +114,13 @@ class DriveStep(object):
 
     def LIDAR_based_angle(self):
         if self.walls['B']:
-            angle_skew = (self.compute_skew(180)[1] - 90)
+            angle_skew = -np.deg2rad(self.compute_skew(180)[1])
             ref_wall = "Back"
         elif self.walls['L']:
-            angle_skew = np.deg2rad(self.compute_skew(90)[1] - 90)
+            angle_skew = -np.deg2rad(self.compute_skew(90)[1])
             ref_wall = "Left"
         elif self.walls['R']:
-            angle_skew = np.deg2rad(self.compute_skew(270)[1] + 90)
+            angle_skew = -np.deg2rad(self.compute_skew(270)[1])
             ref_wall = "Right"
         else:
             print("No walls present, so no angle skew / ref_wall")
@@ -136,17 +136,16 @@ class DriveStep(object):
             # compute angle to turn (closest rotation angle from a to b)
             # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
 
-            #if math.fabs(self.direction_to_drive - self.theta_turned2) < .3:
+            if math.fabs(self.direction_to_drive - self.theta_turned2) < .3 and self.LIDAR_based_angle():
                 # if turning the last bit, use LIDAR
-            #    angle_to_turn = self.LIDAR_based_angle()[1]
+                angle_to_turn = self.LIDAR_based_angle()[1]
 
-            #lse:
+            else:
                 # It is OK to use encoders for the majority of the turn
-            angle_to_turn = self.direction_to_drive - self.theta_turned2
-
+                angle_to_turn = self.direction_to_drive - self.theta_turned2
 
             motion = Twist()
-            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*angle_to_turn))-self.max_turn_speed
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp((-3)*angle_to_turn))-self.max_turn_speed
             motion.linear.x = 0
 
             if math.fabs(angle_to_turn) < self.turn_cutoff:
@@ -167,18 +166,16 @@ class DriveStep(object):
         # print("Driving...")
         if self.skew is not None:
             # If we have at least one wall
-            if self.skew[0] > 0.001:
+            if self.skew[2] == 90:
                 sideskew = self.skew[0] - 0.084
-                angle_correction = ((self.skew[1]-90)**3)/1000
-            elif self.skew[0] < 0.001:
-                sideskew = 0.084 + self.skew[0]
-                angle_correction = ((self.skew[1]+90)**3)/1000
-            #    print(sideskew)
-            drift_correction = (sideskew**3)*10000
+            elif self.skew[2] == 270:
+                sideskew = 0.084 - self.skew[0]
+
+            angle_correction = 1/(1+math.exp(15*np.deg2rad(self.skew[1]))) - 0.5
+            drift_correction = 1/(1+math.exp(-10*sideskew)) - 0.5
 
 
-            angvel = angle_correction + drift_correction
-
+            angvel = (angle_correction + drift_correction)/2
         else: # if there's no walls and you're fucked
             # print('You have no walls to go off of! Using only odom for movement')
             # compute skew from odom?
@@ -269,16 +266,23 @@ class DriveStep(object):
         B_num = sum(np.multiply(x_adj, y_adj))
         B_den = sum(np.square(x_adj))
 
-        # if B_num < 0.001:
-        #     B_num = 0
-
         # opposite reciprocal of calculated slope
-        angle = np.rad2deg(math.atan2(-B_den, B_num)) + (270-center)    # add  to fix robot perspective
-        #print(angle)
-        distance = self.scan[int(angle)] * np.sign(180-center)          # Changing sign to fit direction
-        self.publish_vector(distance, angle)
+        angle = np.rad2deg(math.atan2(-B_den, B_num))    # add  to fix robot perspective
+        if center < 180:
+            mapped_angle = angle + 180
+        elif center > 180:
+            mapped_angle = angle + 360
+        else:
+            if angle > -90:
+                mapped_angle = angle + 180
+            else:
+                mapped_angle = angle + 360
 
-        return distance, angle
+        angle_diff = center - mapped_angle
+        distance = self.scan[int(mapped_angle)]          # Changing sign to fit direction
+        self.publish_vector(distance, angle_diff)
+
+        return distance, angle_diff, center
 
     def get_walls(self):
         scan_angle = 15
@@ -302,9 +306,6 @@ class DriveStep(object):
             self.wall_distances['front_wall'] = self.compute_keypoints() # called (and reset) on every lidar scan
 
 
-        # if self.walls["B"]:
-        #     sub_skew = self.compute_skew(180)
-        #     #print("sub skew", sub_skew)
         if self.walls["L"]:
             # Follow Left wall for straight path
             self.skew = self.compute_skew(90)
