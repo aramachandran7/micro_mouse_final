@@ -60,8 +60,6 @@ class DriveStep(object):
         self.theta_turned2 = None
         self.odom_start = None
 
-
-
         # lidar vars
         self.scan = []
         self.walls = {
@@ -107,29 +105,28 @@ class DriveStep(object):
 
         self.neato_pos = np.array((0,0,0))
         self.states_counter = 0
-        self.d_to_key = None
-        self.kp_side = None
 
-        # self.angles = {
-        #     'F':0,
-        #     'B':math.pi,
-        #     'L':math.pi/2,
-        #     'R':-math.pi/2,
-        # }
+        # self.d_to_key = None
+        # self.kp_side = None
+        self.prev_45 = (None, None)
+
 
 
     def LIDAR_based_angle(self):
         if self.walls['B']:
-            angle_skew = np.deg2rad(self.compute_skew(180)[1])
-
+            angle_skew = (self.compute_skew(180)[1] - 90)
+            ref_wall = "Back"
         elif self.walls['L']:
             angle_skew = np.deg2rad(self.compute_skew(90)[1] - 90)
+            ref_wall = "Left"
         elif self.walls['R']:
             angle_skew = np.deg2rad(self.compute_skew(270)[1] + 90)
+            ref_wall = "Right"
         else:
+            print("No walls present, so no angle skew / ref_wall")
             return None
         print("Angle Skew:      ", angle_skew)
-        return angle_skew
+        return ref_wall, angle_skew
 
     def turn(self):
         #print("Turning...")
@@ -139,12 +136,14 @@ class DriveStep(object):
             # compute angle to turn (closest rotation angle from a to b)
             # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
 
-            if math.fabs(self.direction_to_drive - self.theta_turned2) < .3:
+            #if math.fabs(self.direction_to_drive - self.theta_turned2) < .3:
                 # if turning the last bit, use LIDAR
-                angle_to_turn = self.LIDAR_based_angle()
-            else:
+            #    angle_to_turn = self.LIDAR_based_angle()[1]
+
+            #lse:
                 # It is OK to use encoders for the majority of the turn
-                angle_to_turn = self.direction_to_drive - self.theta_turned2
+            angle_to_turn = self.direction_to_drive - self.theta_turned2
+
 
             motion = Twist()
             motion.angular.z = self.max_turn_speed*2/(1+math.exp((-10)*angle_to_turn))-self.max_turn_speed
@@ -194,14 +193,8 @@ class DriveStep(object):
         # print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
 
         if self.wall_distances["front_wall"] is not None:
-            # optional control logic if there is a front wall to correct off of
+            # control logic if there is a front wall to correct off of
             if math.fabs(self.wall_distances["front_wall"] - self.path_center) < self.distance_threshold:
-                return self.idle
-            else:
-                return self.drive_forwards
-        elif (math.fabs(self.distance_traveled/self.unit_length)>0.75) and (self.d_to_key is not None): # traveled most of the way and there is a keypoint
-            print("using keypoint (%s) on %s side " %(self.kp_side, self.d_to_key))
-            if math.fabs(self.d_to_key - self.path_center)<self.distance_threshold:
                 return self.idle
             else:
                 return self.drive_forwards
@@ -224,20 +217,42 @@ class DriveStep(object):
         return x, y
 
     def compute_keypoints(self):
-        # TODO: adjust angle ranges and distance ranges for L and R
-        if not self.walls['L']:
-            for i in reversed(range(90)):
-                if  self.scan[i]>= .055 and self.scan[i] <= .14:
-                    # you've found your keypoint, compute the d_to_key assumign bot is centered
-                    self.kp_side = "L"
-                    return math.sqrt(self.scan[i]**2 - self.path_center**2)
-        elif not self.walls['R']:
-            for i in (range(270,360)):
-                if self.scan[i]>= .055 and self.scan[i] <= .14:
-                    # you've found your keypoint, compute the d_to_key assumign bot is centered
-                    self.kp_side = "R"
-                    return math.sqrt(self.scan[i]**2 - self.path_center**2)
+        # this will only be called if there is no front wall.
         return None
+        if self.prev_45==(None, None): # handle base case
+            print("first run, lol")
+            return None
+
+        if self.compute_prev_45() != self.prev_45:
+            # approximate 'wall ' ahead, you have reached target
+            return self.path_center
+
+        else:
+            return None
+        # if self.scan[45] != self.prev_45[0] or self.scan[len(self.scan)-45] != self.prev_45[1]
+        # self.prev_45 = (self.scan[45], self.scan[len(self.scan)-45]) # set self.prev_45
+
+        # TODO: adjust angle ranges and distance ranges for L and R
+        # if not self.walls['L']:
+        #     for i in reversed(range(90)):
+        #         if  self.scan[i]>= .055 and self.scan[i] <= .14:
+        #             # you've found your keypoint, compute the d_to_key assumign bot is centered
+        #             self.kp_side = "L"
+        #             return math.sqrt(self.scan[i]**2 - self.path_center**2)
+        # else:
+        #     for i in reversed(range(90)):
+        #         if  self.scan[i]>= .055 and self.scan[i] <= .14:
+        #             # you've found your keypoint, compute the d_to_key assumign bot is centered
+        #             self.kp_side = "L"
+        #             return math.sqrt(self.scan[i]**2 - self.path_center**2)
+        #
+        # elif not self.walls['R']:
+        #     for i in (range(270,360)):
+        #         if self.scan[i]>= .055 and self.scan[i] <= .14:
+        #             # you've found your keypoint, compute the d_to_key assumign bot is centered
+        #             self.kp_side = "R"
+        #             return math.sqrt(self.scan[i]**2 - self.path_center**2)
+        # return None
 
 
     def compute_skew(self, center):
@@ -253,8 +268,13 @@ class DriveStep(object):
 
         B_num = sum(np.multiply(x_adj, y_adj))
         B_den = sum(np.square(x_adj))
+
+        # if B_num < 0.001:
+        #     B_num = 0
+
         # opposite reciprocal of calculated slope
         angle = np.rad2deg(math.atan2(-B_den, B_num)) + (270-center)    # add  to fix robot perspective
+        #print(angle)
         distance = self.scan[int(angle)] * np.sign(180-center)          # Changing sign to fit direction
         self.publish_vector(distance, angle)
 
@@ -274,9 +294,17 @@ class DriveStep(object):
         we should also compute the angle the robot is off,  if there is a wall.
 
         """
+        if self.walls["F"]:
+            # you have a good front wall! Check values around the center
+            self.wall_distances["front_wall"] = sum(self.scan[-2:] + self.scan[:3])/5
+        else:
+            # set front wall distance based on keypoint measurment
+            self.wall_distances['front_wall'] = self.compute_keypoints() # called (and reset) on every lidar scan
 
-        self.d_to_key = self.compute_keypoints() # called (and reset) on every lidar scan
 
+        # if self.walls["B"]:
+        #     sub_skew = self.compute_skew(180)
+        #     #print("sub skew", sub_skew)
         if self.walls["L"]:
             # Follow Left wall for straight path
             self.skew = self.compute_skew(90)
@@ -288,12 +316,13 @@ class DriveStep(object):
             #print('No Side Walls Found')
             self.skew = None
 
-        if self.walls["F"]:
-            # you have a good front wall! Check values around the center
-            self.wall_distances["front_wall"] = sum(self.scan[-2:] + self.scan[:3])/5
-        else:
-            self.wall_distances['front_wall'] = None
-            self.walls["F"] = False
+    def compute_prev_45(self):
+        # grab scan data and return True for wall and false for no wall at ~45's
+        return (all((i >= .055 and i <= .12) for i in self.scan[45-1:45+1+1]),
+                all((i >= .055 and i <= .12) for i in self.scan[315-1:315+1+1])
+         )
+
+
 
 
     def scan_recieved(self, msg):
@@ -301,6 +330,7 @@ class DriveStep(object):
         self.scan = msg.ranges
         self.get_walls()
         self.compute_side_distances()
+        self.prev_45 = self.compute_prev_45()
 
     def odom_recieved(self, msg):
         """ callback for /odom"""
@@ -468,8 +498,8 @@ if __name__ == '__main__':
 #    print("turning")
 #    drive.drive('R', 0.2)
 #    drive.drive('R', 0.2)
-    drive.drive((0,1), 0.2)
-    drive.drive((0,0), 0.2)
+    drive.drive((1,0), 0.0)
+#    drive.drive((0,0), 0.0)
 
     #r = rospy.Rate(10)
     #while not rospy.is_shutdown():
