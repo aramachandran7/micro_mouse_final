@@ -137,7 +137,7 @@ class DriveStep(object):
 
         # error thresholds and constants
         self.unit_length = .18 # universal unit length
-        self.turn_cutoff = .015
+        self.turn_cutoff = .075
         self.path_center = .084
         self.max_turn_speed = None
         self.angle_increaser = 1.0
@@ -154,14 +154,16 @@ class DriveStep(object):
         else:
             # compute angle to turn (closest rotation angle from a to b)
             # angle_to_turn = self.angle_increaser*self.angles[self.direction_to_drive]
+            self.angle_skew = self.LIDAR_based_angle()[1]
 
-            # if math.fabs(self.direction_to_drive - self.theta_turned2) < .3 and self.LIDAR_based_angle():
-            #     # if turning the last bit, use LIDAR
-            #     angle_to_turn = self.LIDAR_based_angle()[1]
+            if math.fabs(self.direction_to_drive - self.theta_turned2) < .3 and self.angle_skew:
+                # if turning the last bit, use LIDAR
+                print("Angle Skew during turn: ", self.angle_skew) 
+                angle_to_turn = self.angle_skew
 
-            # else:
+            else:
                 # It is OK to use encoders for the majority of the turn
-            angle_to_turn = self.direction_to_drive - self.theta_turned2
+                angle_to_turn = self.direction_to_drive - self.theta_turned2
 
             motion = Twist()
             motion.angular.z = self.max_turn_speed*2/(1+math.exp((-3)*angle_to_turn))-self.max_turn_speed
@@ -220,12 +222,10 @@ class DriveStep(object):
             else:
                 return self.drive_forwards
 
-
     def idle(self):
         # print("you shouldn't be here")
         pass 
 
-    
     def LIDAR_based_angle(self):
         if self.walls['B']:
             angle_skew = -np.deg2rad(self.compute_skew(180)[1])
@@ -238,13 +238,13 @@ class DriveStep(object):
             ref_wall = "Right"
         else:
             print("No walls present, so no angle skew / ref_wall")
-            return None
-        # print("Angle Skew:      ", angle_skew)
-        return ref_wall, angle_skew
+            return (None, None)
+        # print("Angle Skew: ", angle_skew)
+        return (ref_wall, angle_skew)
 
     def compute_keypoints(self):
         # this will only be called if there is no front wall.
-        # return None
+        return None
         if self.prev_45==(None, None): # handle base case
             # print("first run, lol")
             return None
@@ -252,10 +252,10 @@ class DriveStep(object):
         if math.fabs(self.distance_traveled/self.unit_length) < .6: # don't compute prematurely
             # print("ignoring walls ahead  ", self.prev_45)
             return None
-
-        if self.compute_prev_45() != self.prev_45:
+        curr_45 = self.compute_prev_45()
+        if curr_45 != self.prev_45:
             # approximate 'wall ' ahead, you have reached target
-            print("---FOUND 'WALL' AHEAD---  ", self.prev_45)
+            print("---FOUND 'WALL' AHEAD,--- previous 45, 325: ", self.prev_45, " new 45, 325: ", curr_45)
             return self.path_center
 
         else:
