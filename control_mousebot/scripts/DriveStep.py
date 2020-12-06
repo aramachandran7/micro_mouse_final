@@ -136,7 +136,6 @@ class DriveStep(object):
         self.speed = None
 
         # error thresholds and constants
-        self.unit_length = .18 # universal unit length
         self.turn_cutoff = .01
         self.path_center = .084
         self.max_turn_speed = None
