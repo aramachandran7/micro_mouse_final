@@ -152,14 +152,27 @@ class DriveStep(object):
         if self.direction_to_drive == 0.0: # if you're straight up forwards?
             return self.drive_forwards
         else:
-            #print(self.direction_to_drive - self.theta_turned2)
             # compute angle to turn (closest rotation angle from a to b)
-            if self.skew and math.fabs(self.direction_to_drive - self.theta_turned2) < .3:
-                # if turning the last bit, use LIDAR
-                angle_to_turn = -self.skew[1]
-            else:
-                #print(self.direction_to_drive-self.theta_turned2)
+
+            if (math.fabs(self.theta_turned2/self.direction_to_drive) < .80): # maybe 85
                 angle_to_turn = self.direction_to_drive - self.theta_turned2
+                print("Using encoder")
+            elif (self.skew is not None):
+                angle_to_turn = -self.skew[1]
+                print("Using linreg")
+            else:
+                print("you're over 80 %, but you're still using the fucking encoder!")
+                angle_to_turn = self.direction_to_drive - self.theta_turned2
+
+
+            # if self.skew and (math.fabs(self.theta_turned2/self.direction_to_drive) > .80):
+            #     # if turning the last bit, use LIDAR
+            #     angle_to_turn = -self.skew[1]
+            #     print("turning off linreg")
+            # else:
+            #     #print(self.direction_to_drive-self.theta_turned2)
+            #     angle_to_turn = self.direction_to_drive - self.theta_turned2
+            #     print("turning off encoder")
 
             motion = Twist()
             motion.angular.z = self.max_turn_speed*2/(1+math.exp(-10*angle_to_turn))-self.max_turn_speed*1
@@ -230,16 +243,16 @@ class DriveStep(object):
             return None
 
         if math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
-            print("ignoring walls ahead  ", self.prev_45)
+            #print("ignoring walls ahead  ", self.prev_45)
             return None
         curr_45 = self.compute_prev_45()
         if curr_45 != self.prev_45:
             # approximate 'wall ' ahead, you have reached target
-            print("---FOUND 'WALL' AHEAD,--- previous 45, 325: ", self.prev_45, " new 45, 325: ", curr_45)
+            #print("---FOUND 'WALL' AHEAD,--- previous 45, 325: ", self.prev_45, " new 45, 325: ", curr_45)
             return self.path_center
 
         else:
-            print("---DIDN'T FIND 'WALL' AHEAD--  ", self.prev_45)
+            #print("---DIDN'T FIND 'WALL' AHEAD--  ", self.prev_45)
             return None
 
     def compute_skew(self, center):
@@ -272,13 +285,10 @@ class DriveStep(object):
 
         if self.walls['B']:
             self.skew = self.compute_skew(180)
-            ref_wall = "Back"
         elif self.walls['L']:
             self.skew = self.compute_skew(90)
-            ref_wall = "Left"
         elif self.walls['R']:
             self.skew = self.compute_skew(270)
-            ref_wall = "Right"
         else:
             self.skew = None
 

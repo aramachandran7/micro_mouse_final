@@ -11,7 +11,7 @@ import time
 
 def run():
     # setting constants
-    speed = 0.15
+    speed = 0.25
     pos = (0,0)
     walls = None
 
@@ -40,7 +40,7 @@ def run():
         walls = driver.drive(next_pos, speed) # updates walls, position
         pos = next_pos
         print(' ')
-        time.sleep(.25)
+        #time.sleep(.25)
 
     # code for mousebot to reverse track back to starting point
 
