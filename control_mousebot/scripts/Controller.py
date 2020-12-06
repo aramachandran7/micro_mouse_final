@@ -5,6 +5,7 @@ from Graph import Graph2
 from MoveComputer import MoveComputer2
 from DriveStep import DriveStep
 import rospy
+import time
 
 
 
@@ -39,6 +40,7 @@ def run():
         walls = driver.drive(next_pos, speed) # updates walls, position
         pos = next_pos
         print(' ')
+        time.sleep(.25)
 
     # code for mousebot to reverse track back to starting point
 
