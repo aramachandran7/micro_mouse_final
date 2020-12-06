@@ -153,15 +153,15 @@ class DriveStep(object):
             return self.drive_forwards
         else:
             # compute angle to turn (closest rotation angle from a to b)
-
-            if (math.fabs(self.theta_turned2/self.direction_to_drive) < .80): # maybe 85
+            completion_percent = (0.85) if math.fabs(self.direction_to_drive==math.pi) else (0.65)
+            if (math.fabs(self.theta_turned2/self.direction_to_drive) < completion_percent): # maybe 85
                 angle_to_turn = self.direction_to_drive - self.theta_turned2
-                print("Using encoder")
+                # print("Using encoder: ", angle_to_turn)
             elif (self.skew is not None):
                 angle_to_turn = -self.skew[1]
-                print("Using linreg")
+                # print("Using linreg: ", angle_to_turn)
             else:
-                print("you're over 80 %, but you're still using the fucking encoder!")
+                # print("you're over 80 %, but you're still using the fucking encoder!")
                 angle_to_turn = self.direction_to_drive - self.theta_turned2
 
 
@@ -175,7 +175,7 @@ class DriveStep(object):
             #     print("turning off encoder")
 
             motion = Twist()
-            motion.angular.z = self.max_turn_speed*2/(1+math.exp(-10*angle_to_turn))-self.max_turn_speed*1
+            motion.angular.z = self.max_turn_speed*4/(1+math.exp(-10*angle_to_turn))-self.max_turn_speed*2
             motion.linear.x = 0
 
             if math.fabs(angle_to_turn) < self.turn_cutoff:
@@ -317,11 +317,11 @@ class DriveStep(object):
     def odom_recieved(self, msg):
         """ callback for /odom"""
         self.x_odom, self.y_odom, self.yaw_odom = self.help.convert_pose_to_xy_and_theta(msg.pose.pose)
+        print(self.x_odom, self.y_odom)
         if self.odom_start is not None: # compute distance traveled in the direction you care about.
             self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
             # compute theta turned based off original heading.
             self.theta_turned2 = self.help.angle_diff(self.yaw_odom, self.odom_start[2])
-            self.theta_turned = self.yaw_odom-self.odom_start[2]
             #print("theta_turned2: ", self.theta_turned2)
 
     def reset(self, direction_to_drive, speed):
@@ -424,7 +424,15 @@ if __name__ == '__main__':
 #    print("turning")
 #    drive.drive('R', 0.2)
 #    drive.drive('R', 0.2)
-    drive.drive((1,0), 0.0)
+    drive.drive((0,1), 0.2)
+
+    drive.drive((0,0), 0.2)
+    drive.drive((0,1), 0.2)
+    drive.drive((0,0), 0.2)
+    drive.drive((0,1), 0.2)
+    drive.drive((0,0), 0.2)
+    drive.drive((0,1), 0.2)
+    drive.drive((0,0), 0.2)
 #    drive.drive((0,0), 0.0)
 
     #r = rospy.Rate(10)
