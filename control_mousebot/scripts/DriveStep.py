@@ -136,7 +136,7 @@ class DriveStep(object):
         self.speed = None
 
         # error thresholds and constants
-        self.unit_length = .18 # universal unit length
+        self.unit_length = .20 # universal unit length, was .18 TODO: dynamic UL adjusting?
         self.turn_cutoff = .01
         self.path_center = .084
         self.max_turn_speed = None
@@ -229,7 +229,7 @@ class DriveStep(object):
             # print("first run, lol")
             return None
 
-        if math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
+        if math.fabs(self.distance_traveled/self.unit_length) < .3: # don't compute prematurely
             print("ignoring walls ahead  ", self.prev_45)
             return None
         curr_45 = self.compute_prev_45()
