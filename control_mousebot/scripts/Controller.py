@@ -11,16 +11,16 @@ import time
 
 def run():
     # setting constants
-    speed = 0.3
+    speed = 0.2
     # pos = (0,0)
-    pos = (13,1)
+    pos = (0,0)
     target = (7.5, 7.5)
 
     # creating objects
     MoveComputer = MoveComputer2()
     graph = Graph2()
     driver = DriveStep(pos)
-    # time.sleep(3) # hold up 
+    # time.sleep(3) # hold up
     walls = driver.return_walls(first=True) # compute first walls before movement
 
     #print(graph.graph)
@@ -33,7 +33,7 @@ def run():
         walls = driver.drive(next_pos, speed) # updates walls, position
         pos = next_pos
         print(' ')
-        time.sleep(.15)
+        time.sleep(.3)
 
     # code for mousebot to reverse track back to starting point
 

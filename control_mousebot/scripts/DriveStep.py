@@ -143,8 +143,9 @@ class DriveStep(object):
         self.angle_increaser = 1.0
         self.distance_threshold = .02
         self.scan_angle = 5
+        self.wall_precision_thresh = 0.75
 
-        self.neato_pos = np.array((pos[0], pos[1],0)) # 
+        self.neato_pos = np.array((pos[0], pos[1],0)) #
         self.prev_45 = (None, None)
 
     def turn(self):
@@ -175,7 +176,7 @@ class DriveStep(object):
             #     print("turning off encoder")
 
             motion = Twist()
-            motion.angular.z = self.max_turn_speed*4/(1+math.exp(-10*angle_to_turn))-self.max_turn_speed*2
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp(-10*angle_to_turn))-self.max_turn_speed
             motion.linear.x = 0
 
             if math.fabs(angle_to_turn) < self.turn_cutoff:
@@ -241,7 +242,7 @@ class DriveStep(object):
         if self.prev_45==(None, None): # handle base case
             # print("first run, lol")
             return None
-        if self.distance_traveled is None: 
+        if self.distance_traveled is None:
             return None
         if math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
             #print("ignoring walls ahead  ", self.prev_45)
@@ -277,12 +278,45 @@ class DriveStep(object):
         #self.publish_vector(distance, angle_diff)
         return distance, angle, center
 
-    def set_walls_and_skew(self):
+    def set_walls(self):
         scan_angle = 15
-        self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
-        self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
-        self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
-        self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
+        # self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
+        # self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
+        # self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
+        # self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
+        #
+        # print("scanF: ", self.scan[-15:] + self.scan[:15])
+        # print("scanR: ", self.scan[255:286])
+
+        center = 0
+        btm_range = .055
+        slices = []
+        for key in self.walls.keys():
+            top_range = 0.12
+            if key == "F":
+                center = 0
+                top_range = 0.16
+                slices = self.scan[0-scan_angle:] + self.scan[:0+scan_angle]
+            elif key == "B":
+                center = 180
+                slices = (self.scan[center-scan_angle:center+scan_angle+1])
+            elif key == "L":
+                center = 90
+                slices = (self.scan[center-scan_angle:center+scan_angle+1])
+            elif key == "R":
+                center = 270
+                slices = (self.scan[center-scan_angle:center+scan_angle+1])
+
+            total_in_range = 0
+            for i in slices:
+                if btm_range <= i <= top_range:
+                    total_in_range += 1
+            # if key =="F":
+            #     print("total_in_range: ", total_in_range)
+            self.walls[key] = (total_in_range/(scan_angle*2) > self.wall_precision_thresh)
+
+    def set_walls_and_skew(self):
+        self.set_walls()
 
         if self.walls['B']:
             self.skew = self.compute_skew(180)
@@ -333,7 +367,7 @@ class DriveStep(object):
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
         self.theta_turned2 = 0
         self.distance_traveled = 0
-        self.max_turn_speed = 1.0
+        self.max_turn_speed = 3.0
 
     def compute_direction(self, future_pos):
         """
@@ -355,32 +389,28 @@ class DriveStep(object):
         """ returns walls list [] global F B L R """
         #print("self.neato_orient", self.neato_pos[2]/math.pi)
         if first:
-            scan_angle = 15
-            self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
-            self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
-            self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
-            self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
+            self.set_walls()
 
         walls = []
         Angular_error = 0.1
-        if first: 
+        if first:
             # always forwards
             # walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
             walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
 
             print("hi")
-        else: 
+        else:
             # must return walls (F B L R) in Bools
-            if 0.0-Angular_error < self.neato_pos[2] < 0.0+Angular_error:  
+            if 0.0-Angular_error < self.neato_pos[2] < 0.0+Angular_error:
                 print("forwards")          # Facing Forwards
                 walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
-            elif -math.pi/2-Angular_error < self.neato_pos[2] < -math.pi/2+Angular_error: 
+            elif -math.pi/2-Angular_error < self.neato_pos[2] < -math.pi/2+Angular_error:
                 print("right")   # Facing Right
                 walls = [self.walls["L"], self.walls["R"], False, self.walls["F"]]
-            elif math.pi-Angular_error < math.fabs(self.neato_pos[2]) < math.pi+Angular_error: 
+            elif math.pi-Angular_error < math.fabs(self.neato_pos[2]) < math.pi+Angular_error:
                 print("ack") # Facing Backwards, with some play
                 walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
-            elif math.pi/2-Angular_error < self.neato_pos[2] < math.pi/2+Angular_error: 
+            elif math.pi/2-Angular_error < self.neato_pos[2] < math.pi/2+Angular_error:
                 print("left")   # Facing Left
                 walls = [self.walls["R"], self.walls["L"], self.walls["F"], False]
         return walls
