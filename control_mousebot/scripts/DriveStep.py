@@ -95,7 +95,7 @@ class DriveStep(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, pos=(0,0)):
 
         rospy.init_node('DriveStep')
 
@@ -136,7 +136,7 @@ class DriveStep(object):
         self.speed = None
 
         # error thresholds and constants
-        self.unit_length = .20 # universal unit length, was .18 TODO: dynamic UL adjusting?
+        self.unit_length = .19 # universal unit length, was .18 TODO: dynamic UL adjusting?
         self.turn_cutoff = .01
         self.path_center = .084
         self.max_turn_speed = None
@@ -144,7 +144,7 @@ class DriveStep(object):
         self.distance_threshold = .02
         self.scan_angle = 5
 
-        self.neato_pos = np.array((0,0,0))
+        self.neato_pos = np.array((pos[0], pos[1],0)) # 
         self.prev_45 = (None, None)
 
     def turn(self):
@@ -241,7 +241,8 @@ class DriveStep(object):
         if self.prev_45==(None, None): # handle base case
             # print("first run, lol")
             return None
-
+        if self.distance_traveled is None: 
+            return None
         if math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
             #print("ignoring walls ahead  ", self.prev_45)
             return None
@@ -317,7 +318,7 @@ class DriveStep(object):
     def odom_recieved(self, msg):
         """ callback for /odom"""
         self.x_odom, self.y_odom, self.yaw_odom = self.help.convert_pose_to_xy_and_theta(msg.pose.pose)
-        print(self.x_odom, self.y_odom)
+        # print(self.x_odom, self.y_odom)
         if self.odom_start is not None: # compute distance traveled in the direction you care about.
             self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
             # compute theta turned based off original heading.
@@ -330,7 +331,7 @@ class DriveStep(object):
         self.speed = speed
         self.state = self.turn
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
-        self.theta_turned = 0
+        self.theta_turned2 = 0
         self.distance_traveled = 0
         self.max_turn_speed = 1.0
 
@@ -350,21 +351,38 @@ class DriveStep(object):
         print("turning:  ", angle_to_turn)
         return angle_to_turn
 
-    def return_walls(self):
-        """ returns walls list [] global F B R L (same as NESW)"""
+    def return_walls(self, first=False):
+        """ returns walls list [] global F B L R """
         #print("self.neato_orient", self.neato_pos[2]/math.pi)
+        if first:
+            scan_angle = 15
+            self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
+            self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
+            self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
+            self.walls["R"] = all((i >= .055 and i <= .12) for i in self.scan[270-scan_angle:270+scan_angle+1])
+
         walls = []
         Angular_error = 0.1
-
-        # must return walls (F B L R) in Bools
-        if 0.0-Angular_error < self.neato_pos[2] < 0.0+Angular_error:            # Facing Forwards
-            walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
-        elif -math.pi/2-Angular_error < self.neato_pos[2] < -math.pi/2+Angular_error:    # Facing Right
-            walls = [self.walls["L"], self.walls["R"], False, self.walls["F"]]
-        elif math.pi-Angular_error < math.fabs(self.neato_pos[2]) < math.pi+Angular_error:  # Facing Backwards, with some play
+        if first: 
+            # always forwards
+            # walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
             walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
-        elif math.pi/2-Angular_error < self.neato_pos[2] < math.pi/2+Angular_error:    # Facing Left
-            walls = [self.walls["R"], self.walls["L"], self.walls["F"], False]
+
+            print("hi")
+        else: 
+            # must return walls (F B L R) in Bools
+            if 0.0-Angular_error < self.neato_pos[2] < 0.0+Angular_error:  
+                print("forwards")          # Facing Forwards
+                walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
+            elif -math.pi/2-Angular_error < self.neato_pos[2] < -math.pi/2+Angular_error: 
+                print("right")   # Facing Right
+                walls = [self.walls["L"], self.walls["R"], False, self.walls["F"]]
+            elif math.pi-Angular_error < math.fabs(self.neato_pos[2]) < math.pi+Angular_error: 
+                print("ack") # Facing Backwards, with some play
+                walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
+            elif math.pi/2-Angular_error < self.neato_pos[2] < math.pi/2+Angular_error: 
+                print("left")   # Facing Left
+                walls = [self.walls["R"], self.walls["L"], self.walls["F"], False]
         return walls
 
     def drive(self, future_pos, speed):

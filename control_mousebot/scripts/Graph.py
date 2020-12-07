@@ -15,7 +15,7 @@ class Graph2(object):
     def __init__(self):
 
         self.graph = {
-            (0,0): [(0,1)]
+            # (0,0): [(0,1)]
             # (4,10): [(4,9), (4,11)]
         } # contains a list of connected node positions
 

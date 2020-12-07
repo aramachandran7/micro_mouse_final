@@ -11,36 +11,29 @@ import time
 
 def run():
     # setting constants
-    speed = 0.15
-    pos = (0,0)
-    walls = None
+    speed = 0.3
+    # pos = (0,0)
+    pos = (13,1)
+    target = (7.5, 7.5)
 
     # creating objects
     MoveComputer = MoveComputer2()
     graph = Graph2()
-    driver = DriveStep()
+    driver = DriveStep(pos)
+    # time.sleep(3) # hold up 
+    walls = driver.return_walls(first=True) # compute first walls before movement
 
-    # make first move, grab first data
-    #walls = driver.drive((0,1), speed)
-    #pos = (0,1)
-    #graph.update_graph(pos, walls)
-    # walls = driver.drive((0,2), speed)
-    # pos = (0,2)
-    # graph.update_graph(pos, walls)
-
-    target = (7.5, 7.5)
     #print(graph.graph)
     # blocking code while loop for mousebot reach center
     while pos != target and not rospy.is_shutdown():
         print('movement!=======================================================================')
-        print(walls)
         graph.update_graph(pos, walls)
         next_pos = MoveComputer.compute_next_move(graph, pos)
         print("Moving to:   ", next_pos)
         walls = driver.drive(next_pos, speed) # updates walls, position
         pos = next_pos
         print(' ')
-        time.sleep(.25)
+        time.sleep(.15)
 
     # code for mousebot to reverse track back to starting point
 
