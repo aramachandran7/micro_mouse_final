@@ -95,7 +95,7 @@ class DriveStep(object):
 
     """
 
-    def __init__(self, pos=(0,0)):
+    def __init__(self, pos=(0,0), unit_length=0.192):
 
         rospy.init_node('DriveStep')
 
@@ -136,14 +136,14 @@ class DriveStep(object):
         self.speed = None
 
         # error thresholds and constants
-        self.unit_length = .19 # universal unit length, was .18 TODO: dynamic UL adjusting?
+        self.unit_length = unit_length # universal unit length, was .18 TODO: dynamic UL adjusting?
         self.turn_cutoff = .01
         self.path_center = .084
         self.max_turn_speed = None
         self.angle_increaser = 1.0
         self.distance_threshold = .02
         self.scan_angle = 5
-        self.wall_precision_thresh = 0.75
+        self.wall_precision_thresh = 0.70
 
         self.neato_pos = np.array((pos[0], pos[1],0)) #
         self.prev_45 = (None, None)
@@ -265,6 +265,9 @@ class DriveStep(object):
             theta = center + (i-scan_angle)
             x[i], y[i] = self.help.pol2cart(self.scan[theta], np.deg2rad(theta-center))
 
+        # if any([np.isnan(i) for i in y]) or any([np.isnan(i) for i in x]): # return out current skew if nans
+        #     return self.skew
+        
         x_adj = x - mean(x)
         y_adj = y - mean(y)
 
@@ -272,14 +275,15 @@ class DriveStep(object):
         B_den = sum(np.square(x_adj))
 
         angle = math.atan2(B_num, B_den)    # add  to fix robot perspective
-
         deg_angle = np.rad2deg(angle)
+        if np.isnan(deg_angle):
+            return self.skew
         distance = self.scan[int(deg_angle + center)]          # Changing sign to fit direction
         #self.publish_vector(distance, angle_diff)
         return distance, angle, center
 
     def set_walls(self):
-        scan_angle = 15
+        scan_angle = 18
         # self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
         # self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
         # self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
@@ -288,32 +292,29 @@ class DriveStep(object):
         # print("scanF: ", self.scan[-15:] + self.scan[:15])
         # print("scanR: ", self.scan[255:286])
 
-        center = 0
         btm_range = .055
         slices = []
         for key in self.walls.keys():
             top_range = 0.12
             if key == "F":
-                center = 0
                 top_range = 0.16
-                slices = self.scan[0-scan_angle:] + self.scan[:0+scan_angle]
+                slices = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
             elif key == "B":
-                center = 180
-                slices = (self.scan[center-scan_angle:center+scan_angle+1])
+                slices = (self.scan[180-scan_angle:180+scan_angle+1])
             elif key == "L":
-                center = 90
-                slices = (self.scan[center-scan_angle:center+scan_angle+1])
+                slices = (self.scan[90-scan_angle:90+scan_angle+1])
             elif key == "R":
-                center = 270
-                slices = (self.scan[center-scan_angle:center+scan_angle+1])
+                slices = (self.scan[270-scan_angle:270+scan_angle+1])
 
             total_in_range = 0
             for i in slices:
                 if btm_range <= i <= top_range:
                     total_in_range += 1
+
             # if key =="F":
-            #     print("total_in_range: ", total_in_range)
-            self.walls[key] = (total_in_range/(scan_angle*2) > self.wall_precision_thresh)
+            #     print("total_in_range F: ", total_in_range, " slices: ", slices)
+
+            self.walls[key] = (total_in_range/len(slices) > self.wall_precision_thresh) if len(slices)!=0 else False
 
     def set_walls_and_skew(self):
         self.set_walls()

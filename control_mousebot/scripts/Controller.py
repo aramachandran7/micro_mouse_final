@@ -11,7 +11,8 @@ import time
 
 def run():
     # setting constants
-    speed = 0.2
+    speed = 0.3
+    unit_length = 0.193
     # pos = (0,0)
     pos = (0,0)
     target = (7.5, 7.5)
@@ -19,7 +20,7 @@ def run():
     # creating objects
     MoveComputer = MoveComputer2()
     graph = Graph2()
-    driver = DriveStep(pos)
+    driver = DriveStep(pos, unit_length=unit_length)
     # time.sleep(3) # hold up
     walls = driver.return_walls(first=True) # compute first walls before movement
 
