@@ -276,14 +276,14 @@ class DriveStep(object):
 
         angle = math.atan2(B_num, B_den)    # add  to fix robot perspective
         deg_angle = np.rad2deg(angle)
-        if np.isnan(deg_angle):
-            return self.skew
+        # if np.isnan(deg_angle):
+        #     return self.skew
         distance = self.scan[int(deg_angle + center)]          # Changing sign to fit direction
         #self.publish_vector(distance, angle_diff)
         return distance, angle, center
 
     def set_walls(self):
-        scan_angle = 18
+        scan_angle = 15
         # self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
         # self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
         # self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
@@ -298,7 +298,9 @@ class DriveStep(object):
             top_range = 0.12
             if key == "F":
                 top_range = 0.16
-                slices = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
+                offset = 12
+                slices = self.scan[offset:offset+scan_angle+1] + self.scan[len(self.scan)-offset-scan_angle:len(self.scan)-offset]
+                # slices = self.scan[0-scan_angle:] + self.scan[:scan_angle+1] 
             elif key == "B":
                 slices = (self.scan[180-scan_angle:180+scan_angle+1])
             elif key == "L":
@@ -335,6 +337,17 @@ class DriveStep(object):
         return (all((i >= .055 and i <= .15) for i in self.scan[45-1:45+1+1]),
                 all((i >= .055 and i <= .15) for i in self.scan[315-1:315+1+1])
          )
+    def compute_front_distance(self, l, r):
+        """ given a scalene triangle denoted by lidar, compute distance to front"""
+
+        a = self.scan[l]
+        b = self.scan[r]
+        theta = np.deg2rad(math.fabs(r-l))
+        c = math.sqrt(a**2 + b**2 + 2*a*b*np.cos(theta))
+        s = (a+b+c)/2.0
+        area = math.sqrt((s*(s-a)*(s-b)*(s-c)))
+        print("theta: ", theta, "c: ", c, "area: ", area, "s: ", s, "inside: ", (s*(s-a)*(s-b)*(s-c)))
+        return 2*area/c
 
     def scan_recieved(self, msg):
         """ callback for /scan -- > computes self.walls, self.front_distance, self.skew, self.prev_45"""
@@ -343,7 +356,14 @@ class DriveStep(object):
 
         if self.walls["F"]:
             # you have a good front wall! Check values around the center
-            self.front_distance = sum(self.scan[-2:] + self.scan[:3])/5
+            # self.front_distance = sum(self.scan[-2:] + self.scan[:3])/5
+
+            offset = 12
+            scan_angle = 15
+            a=  self.compute_front_distance(offset, offset+scan_angle)
+            b = self.compute_front_distance(len(self.scan)-offset-scan_angle,len(self.scan)-offset )
+            print("d2fL, d2fR: ", a,b)
+            self.front_distance = (a + b)/2.0
         else:
             # set front wall distance based on keypoint measurment
             self.front_distance = self.compute_keypoints() # called (and reset) on every lidar scan
