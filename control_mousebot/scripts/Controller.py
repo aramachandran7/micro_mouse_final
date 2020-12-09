@@ -23,6 +23,7 @@ def run():
     driver = DriveStep(pos, unit_length=unit_length)
     # time.sleep(3) # hold up
     walls = driver.return_walls(first=True) # compute first walls before movement
+    print('walls returned first: ', walls)
 
     #print(graph.graph)
     # blocking code while loop for mousebot reach center

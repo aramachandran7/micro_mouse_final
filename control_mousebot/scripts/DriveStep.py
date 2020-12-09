@@ -142,7 +142,7 @@ class DriveStep(object):
         self.max_turn_speed = None
         self.angle_increaser = 1.0
         self.distance_threshold = .02
-        self.scan_angle = 5
+        self.scan_angle = 10
         self.wall_precision_thresh = 0.70
 
         self.neato_pos = np.array((pos[0], pos[1],0)) #
@@ -160,7 +160,8 @@ class DriveStep(object):
                 # print("Using encoder: ", angle_to_turn)
             elif (self.skew is not None):
                 angle_to_turn = -self.skew[1]
-                # print("Using linreg: ", angle_to_turn)
+
+                print("Using linreg: ", angle_to_turn)
             else:
                 # print("you're over 80 %, but you're still using the fucking encoder!")
                 angle_to_turn = self.direction_to_drive - self.theta_turned2
@@ -258,51 +259,39 @@ class DriveStep(object):
             return None
 
     def compute_skew(self, center):
+        scan_angle = self.scan_angle
+
+        x_y = np.zeros((2, scan_angle*2))
         if center == 0:
-            range_of_angles = []
-            scan_angle = 20
-            x = []
-            y = []
             range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
-            for i,distance in enumerate(range_of_angles):
-                theta = scan_angle-i
-                if 0.055 <= distance <= 0.16:
-                    xval, yval = self.help.pol2cart(distance, np.deg2rad(theta))
-                    x.append(xval)
-                    y.append(yval)
-            x = np.asarray(x)
-            y = np.asarray(y)
+            range_of_angles = range_of_angles[::-1]
+        else:
+            range_of_angles = self.scan[center-scan_angle:center+scan_angle]
 
-        else:   #If we see any other wall
-            scan_angle = 10
-            x = np.zeros((scan_angle*2))
-            y = np.zeros((scan_angle*2))
-            for i in range(scan_angle*2):
-                theta = center + (i-scan_angle)
-                x[i], y[i] = self.help.pol2cart(self.scan[theta], np.deg2rad(theta-center))
-            # x = np.append(x, xval)
-            # y = np.append(y, yval)
-
-
-        # if any([np.isnan(i) for i in y]) or any([np.isnan(i) for i in x]): # return out current skew if nans
-        #     return self.skew
-
-        x_adj = x - mean(x)
-        y_adj = y - mean(y)
+        for i, distance in enumerate(range_of_angles):
+            theta = center + (i-scan_angle)
+            if 0.055 <= distance <= 0.16:
+                x_y[0, i-1], x_y[1, i-1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
+            else:
+                np.delete(x_y, i-1, 1)
+        #print("Regression points", x_y)
+        x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
+        y_adj = x_y[1,:] - np.nanmean(x_y[1,:])
 
         B_num = sum(np.multiply(x_adj, y_adj))
         B_den = sum(np.square(x_adj))
+        if np.isnan(B_num) or np.isnan(B_den):
+            print("SLOPE IS NAN", x, y)
 
-        angle = math.atan2(B_num, B_den)    # add  to fix robot perspective
+        angle = math.atan2(B_num, B_den)
         deg_angle = np.rad2deg(angle)
-        # if np.isnan(deg_angle):
-        #     return self.skew
-        distance = self.scan[int(deg_angle + center)]          # Changing sign to fit direction
-        #self.publish_vector(distance, angle_diff)
+
+        distance = self.scan[int(deg_angle + center)]
+        self.publish_vector(distance, angle)
         return distance, angle, center
 
     def set_walls(self):
-        scan_angle = 15
+        scan_angle = self.scan_angle
         # self.walls["F"] = all((i >= .055 and i <= .16) for i in (self.scan[-2:] + self.scan[:3])) # TODO: tune in scanning range for front
         # self.walls["B"] = all((i >= .055 and i <= .12) for i in self.scan[180-scan_angle:180+scan_angle+1])
         # self.walls["L"] = all((i >= .055 and i <= .12) for i in self.scan[90-scan_angle:90+scan_angle+1])
@@ -409,7 +398,7 @@ class DriveStep(object):
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
         self.theta_turned2 = 0
         self.distance_traveled = 0
-        self.max_turn_speed = 3.0
+        self.max_turn_speed = 4.0
 
     def compute_direction(self, future_pos):
         """
@@ -430,17 +419,16 @@ class DriveStep(object):
     def return_walls(self, first=False):
         """ returns walls list [] global F B L R """
         #print("self.neato_orient", self.neato_pos[2]/math.pi)
-        if first:
-            self.set_walls()
-
         walls = []
         Angular_error = 0.1
         if first:
+            self.set_walls()
             # always forwards
-            # walls = [self.walls["F"], False, self.walls["L"], self.walls["R"]]
-            walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
+            # walls = [self.walls["F"]=False, True, self.walls["L"]=False, self.walls["R"]=True]
+            walls = [False, True, True, True] #TODO: (6,1)
+            # walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
+            return walls
 
-            print("hi")
         else:
             # must return walls (F B L R) in Bools
             if 0.0-Angular_error < self.neato_pos[2] < 0.0+Angular_error:
@@ -450,7 +438,7 @@ class DriveStep(object):
                 print("right")   # Facing Right
                 walls = [self.walls["L"], self.walls["R"], False, self.walls["F"]]
             elif math.pi-Angular_error < math.fabs(self.neato_pos[2]) < math.pi+Angular_error:
-                print("ack") # Facing Backwards, with some play
+                print("back") # Facing Backwards, with some play
                 walls = [False, self.walls["F"], self.walls["R"], self.walls["L"]]
             elif math.pi/2-Angular_error < self.neato_pos[2] < math.pi/2+Angular_error:
                 print("left")   # Facing Left
