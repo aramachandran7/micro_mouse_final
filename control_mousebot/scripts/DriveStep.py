@@ -258,16 +258,35 @@ class DriveStep(object):
             return None
 
     def compute_skew(self, center):
-        scan_angle = 15
-        x = np.zeros((scan_angle*2))
-        y = np.zeros((scan_angle*2))
-        for i in range(scan_angle*2):
-            theta = center + (i-scan_angle)
-            x[i], y[i] = self.help.pol2cart(self.scan[theta], np.deg2rad(theta-center))
+        if center == 0:
+            range_of_angles = []
+            scan_angle = 20
+            x = []
+            y = []
+            range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
+            for i,distance in enumerate(range_of_angles):
+                theta = scan_angle-i
+                if 0.055 <= distance <= 0.16:
+                    xval, yval = self.help.pol2cart(distance, np.deg2rad(theta))
+                    x.append(xval)
+                    y.append(yval)
+            x = np.asarray(x)
+            y = np.asarray(y)
+
+        else:   #If we see any other wall
+            scan_angle = 10
+            x = np.zeros((scan_angle*2))
+            y = np.zeros((scan_angle*2))
+            for i in range(scan_angle*2):
+                theta = center + (i-scan_angle)
+                x[i], y[i] = self.help.pol2cart(self.scan[theta], np.deg2rad(theta-center))
+            # x = np.append(x, xval)
+            # y = np.append(y, yval)
+
 
         # if any([np.isnan(i) for i in y]) or any([np.isnan(i) for i in x]): # return out current skew if nans
         #     return self.skew
-        
+
         x_adj = x - mean(x)
         y_adj = y - mean(y)
 
@@ -300,7 +319,7 @@ class DriveStep(object):
                 top_range = 0.16
                 offset = 12
                 slices = self.scan[offset:offset+scan_angle+1] + self.scan[len(self.scan)-offset-scan_angle:len(self.scan)-offset]
-                # slices = self.scan[0-scan_angle:] + self.scan[:scan_angle+1] 
+                # slices = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
             elif key == "B":
                 slices = (self.scan[180-scan_angle:180+scan_angle+1])
             elif key == "L":
@@ -358,12 +377,14 @@ class DriveStep(object):
             # you have a good front wall! Check values around the center
             # self.front_distance = sum(self.scan[-2:] + self.scan[:3])/5
 
-            offset = 12
-            scan_angle = 15
-            a=  self.compute_front_distance(offset, offset+scan_angle)
-            b = self.compute_front_distance(len(self.scan)-offset-scan_angle,len(self.scan)-offset )
-            print("d2fL, d2fR: ", a,b)
-            self.front_distance = (a + b)/2.0
+            self.front_distance = self.compute_skew(0)[0] # get distance via linear regression
+
+            # offset = 12
+            # scan_angle = 15
+            # a=  self.compute_front_distance(offset, offset+scan_angle)
+            # b = self.compute_front_distance(len(self.scan)-offset-scan_angle,len(self.scan)-offset )
+            # print("d2fL, d2fR: ", a,b)
+            # self.front_distance = (a + b)/2.0
         else:
             # set front wall distance based on keypoint measurment
             self.front_distance = self.compute_keypoints() # called (and reset) on every lidar scan
