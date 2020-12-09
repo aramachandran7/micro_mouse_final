@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com)
      Commit Version: 1.6.0-1-g15f4949  Build Version: 1.6.7594.29634
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
@@ -44,7 +44,7 @@
       </geometry>
     </collision>
   </link>
-  
+
   <link
     name="R_wheel">
     <inertial>
@@ -101,7 +101,7 @@
       effort="0"
       velocity="200" />
   </joint>
-  
+
   <link
     name="L_wheel">
     <inertial>
@@ -158,7 +158,7 @@
       effort="0"
       velocity="200" />
   </joint>
-  
+
     <joint name="hokuyo_joint" type="fixed">
     <axis xyz="0 1 0" />
     <origin xyz="0 0 0.03" rpy="0 0 3.1415926"/>
@@ -184,7 +184,7 @@
       <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
     </inertial>
   </link>
-  
+
   <gazebo reference="mousebot">
     <material>Gazebo/Green</material>
   </gazebo>
@@ -208,7 +208,7 @@
     <minDepth>0.001</minDepth>
     <maxVel>5.0</maxVel>
   </gazebo>
-  
+
   <gazebo reference="hokuyo_link">
     <sensor type="ray" name="head_hokuyo_sensor">
       <pose>0 0 0 0 0 0</pose>
@@ -261,5 +261,5 @@
       <odometrySource>encoder</odometrySource>
     </plugin>
   </gazebo>
-  
+
 </robot>
