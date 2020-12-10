@@ -112,6 +112,7 @@ class DriveStep(object):
 
         # lidar variables
         self.scan = []
+        self.ls_object = None
         self.walls = {
             "F": False,
             "B": False,
@@ -130,6 +131,7 @@ class DriveStep(object):
         rospy.Subscriber('/odom', Odometry,self.odom_recieved)
         self.wall_pub = rospy.Publisher('visualization_marker', Marker, queue_size=10)
         self.speed_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.turn_pub = rospy.Publisher('/turn_points', LaserScan, queue_size=10)
 
         # call params
         self.direction_to_drive = None # this is an angle value to turn
@@ -264,9 +266,12 @@ class DriveStep(object):
         x_y = np.zeros((2, scan_angle*2))
         if center == 0:
             range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
+            self.publish_turn(range_of_angles, 0-scan_angle)
             range_of_angles = range_of_angles[::-1]
         else:
             range_of_angles = self.scan[center-scan_angle:center+scan_angle]
+            self.publish_turn(range_of_angles, center-scan_angle)
+
 
         for i, distance in enumerate(range_of_angles):
             theta = center + (i-scan_angle)
@@ -274,6 +279,8 @@ class DriveStep(object):
                 x_y[0, i-1], x_y[1, i-1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
             else:
                 np.delete(x_y, i-1, 1)
+
+
         #print("Regression points", x_y)
         x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
         y_adj = x_y[1,:] - np.nanmean(x_y[1,:])
@@ -281,7 +288,7 @@ class DriveStep(object):
         B_num = sum(np.multiply(x_adj, y_adj))
         B_den = sum(np.square(x_adj))
         if np.isnan(B_num) or np.isnan(B_den):
-            print("SLOPE IS NAN", x, y)
+            print("SLOPE IS NAN")
 
         angle = math.atan2(B_num, B_den)
         deg_angle = np.rad2deg(angle)
@@ -360,6 +367,7 @@ class DriveStep(object):
     def scan_recieved(self, msg):
         """ callback for /scan -- > computes self.walls, self.front_distance, self.skew, self.prev_45"""
         self.scan = msg.ranges
+        self.ls_object = msg # storing the laser scan object
         self.set_walls_and_skew()
 
         if self.walls["F"]:
@@ -463,7 +471,25 @@ class DriveStep(object):
 
     def speed_run(self):
         pass
-
+    
+    def publish_turn(self, vals, starting_index):
+        points_to_publish = [float("Inf")]*len(self.scan)
+        pointer = starting_index
+        if len(vals) + starting_index > len(self.scan): 
+            # dealing with center
+            for i in vals: 
+                if pointer > len(points_to_publish)-1: 
+                    pointer = 0
+                points_to_publish[pointer] = i
+                pointer += 1
+        else: 
+            for i in vals: 
+                points_to_publish[pointer] = i
+                pointer += 1
+    
+        self.ls_object.ranges = points_to_publish
+        self.turn_pub.publish(self.ls_object) # TODO: need to copy? 
+        
     def publish_vector(self, d, theta):
         marker = Marker()
         marker.header.frame_id = "mousebot"
