@@ -189,10 +189,10 @@ class DriveStep(object):
             motion.linear.x = 0
 
             if math.fabs(angle_to_turn) < self.turn_cutoff:
-                if not self.on_speed_run:
-                    return self.drive_forwards
-                else:
+                if self.on_speed_run:
                     return self.drive_forwards_speedrun
+                else:
+                    return self.drive_forwards
             else:
                 self.speed_pub.publish(motion)
                 return self.turn
@@ -429,17 +429,6 @@ class DriveStep(object):
         return (all((i >= .055 and i <= .15) for i in self.scan[45-1:45+1+1]),
                 all((i >= .055 and i <= .15) for i in self.scan[315-1:315+1+1])
          )
-    def compute_front_distance(self, l, r):
-        """ given a scalene triangle denoted by lidar, compute distance to front"""
-
-        a = self.scan[l]
-        b = self.scan[r]
-        theta = np.deg2rad(math.fabs(r-l))
-        c = math.sqrt(a**2 + b**2 + 2*a*b*np.cos(theta))
-        s = (a+b+c)/2.0
-        area = math.sqrt((s*(s-a)*(s-b)*(s-c)))
-        print("theta: ", theta, "c: ", c, "area: ", area, "s: ", s, "inside: ", (s*(s-a)*(s-b)*(s-c)))
-        return 2*area/c
 
     def scan_recieved(self, msg):
         """ callback for /scan -- > computes self.walls, self.front_distance, self.skew, self.prev_45"""
