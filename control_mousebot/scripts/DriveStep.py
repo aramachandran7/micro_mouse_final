@@ -311,7 +311,7 @@ class DriveStep(object):
     def compute_skew(self, center):
         scan_angle = self.scan_angle
 
-        x_y = np.zeros((2, scan_angle*2))
+        x_y = np.zeros((scan_angle*2, 2))
         if center == 0:
             range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
             self.publish_turn(range_of_angles, 0-scan_angle)
@@ -323,13 +323,24 @@ class DriveStep(object):
         for i, distance in enumerate(range_of_angles):
             theta = center + (i-scan_angle)
             if 0.055 <= distance <= 0.16:
-                x_y[0, i-1], x_y[1, i-1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
+                x_y[i-1, 0], x_y[i-1, 1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
             else:
-                np.delete(x_y, i-1, 1)
+                np.delete(x_y, i-1, 0)
+
+        Xmean0 = x_y - x_y.mean(axis=0)
+        covar = Xmean0.T.dot(Xmean0)
+        evals, evecs = np.linalg.eig(covar)
+        v = evecs[:,0][:,np.newaxis]
+        E = Xmean0.dot(v)*v.T - Xmean0
+        r_value = 1 - np.sum(np.square(E))/np.sum(np.square(Xmean0))
+
+        print("R_value: ", r_value)
+
 
 
         # compute with scipy
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x_y[0,:], x_y[1,:])
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x_y[:,0], x_y[:,1])
+
 
         #print("Regression points", x_y)
         # x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
@@ -337,7 +348,6 @@ class DriveStep(object):
 
 
         # Compute r_squared
-        print("R_value: ", r_value**2)
         # correlation_matrix = np.corrcoef(x_adj, y_adj)
         # r_squared = correlation_matrix[0,1]**2
         # if r_squared >= 0.5:
@@ -354,7 +364,8 @@ class DriveStep(object):
         # if np.isnan(B_num) or np.isnan(B_den):
         #     print("SLOPE IS NAN")
 
-        angle = math.atan2(slope,1)
+        #angle = math.atan2(evecs[1,0],evecs[0,0])
+        angle = math.atan2(slope, 1)
         deg_angle = np.rad2deg(angle)
 
         distance = self.scan[int(deg_angle + center)]
@@ -402,7 +413,7 @@ class DriveStep(object):
     def set_walls_and_skew(self):
         self.set_walls()
 
-        if self.walls['B'] and self.compute_skew(180) is not None:
+        if self.walls['B']:
             self.skew = self.compute_skew(180)
         elif self.walls['L']:
             self.skew = self.compute_skew(90)
@@ -549,7 +560,7 @@ class DriveStep(object):
         self.on_speed_run = True
         direction_to_drive = self.compute_direction(future_pos)
         self.reset2(direction_to_drive)
-        self.step_count = sqrt((future_pos[0]-pos[0])**2 + (future_pos[1]-pos[1])**2)
+        #self.step_count = math.sqrt((future_pos[0]-pos[0])**2 + (future_pos[1]-pos[1])**2)
 
         # self.reset()
 
