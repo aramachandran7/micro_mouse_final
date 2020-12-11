@@ -151,9 +151,14 @@ class DriveStep(object):
         self.neato_pos = np.array((pos[0], pos[1],0)) #
         self.prev_45 = (None, None)
 
+        self.on_speed_run = False
+        self.step_count = 1 #number of steps the neato will drive for speedrun
+
     def turn(self):
         #print("Turning...")
         if self.direction_to_drive == 0.0: # if you're straight up forwards?
+            if self.on_speed_run:
+                return self.drive_forwards_speedrun
             return self.drive_forwards
         else:
             # compute angle to turn (closest rotation angle from a to b)
@@ -184,15 +189,52 @@ class DriveStep(object):
             motion.linear.x = 0
 
             if math.fabs(angle_to_turn) < self.turn_cutoff:
-                return self.drive_forwards
+                if not self.on_speed_run:
+                    return self.drive_forwards
+                else:
+                    return self.drive_forwards_speedrun
             else:
                 self.speed_pub.publish(motion)
                 return self.turn
 
-    def drive_speedrun(self):
-        pass
+    def drive_forwards_speedrun(self):
+        if self.skew != None:
+            # If we have at least one wall
+            if self.skew[2] == 90:
+                sideskew = self.skew[0] - 0.084
+            elif self.skew[2] == 270:
+                sideskew = 0.084 - self.skew[0]
+            else:
+                sideskew = 0
+            angle_correction = self.max_turn_speed*2/(1+math.exp(10*self.skew[1])) - self.max_turn_speed
+            drift_correction = self.max_turn_speed*2/(1+math.exp(-25*sideskew)) - self.max_turn_speed
+
+            angvel = (angle_correction + drift_correction)/2
+        else: # if there's no walls and you're fucked
+            # print('You have no walls to go off of! Using only odom for movement')
+            angvel = 0
+
+        motion = Twist()
+        motion.linear.x = self.speed # TODO: add proporaitonal control based on distance driven
+
+        # set angular component of motion based on calculated skew
+        motion.angular.z = angvel
+        self.speed_pub.publish(motion)
 
 
+        if self.front_distance is not None:
+            # control logic if there is a front wall to correct off of
+            if math.fabs(self.front_distance - self.path_center) < self.distance_threshold:
+                return self.idle
+            else:
+                return self.drive_forwards
+        else:
+            if math.fabs(self.unit_length*self.step_count - self.distance_traveled) < self.distance_threshold:
+                return self.idle
+            else:
+                return self.drive_forwards
+
+# TODO: if sigmoid equations work equally well for speedrun, drive_forwards speedrun and drive forwards can be merged
 
     def drive_forwards(self):
         """
@@ -432,6 +474,15 @@ class DriveStep(object):
         self.distance_traveled = 0
         self.max_turn_speed = 4.0
 
+    def reset2(self, direction_to_drive):
+        # set global driving conditions based on params
+        self.direction_to_drive = direction_to_drive
+        self.state = self.turn
+        self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
+        self.theta_turned2 = 0
+        self.distance_traveled = 0
+        self.max_turn_speed = 4.0
+
     def compute_direction(self, future_pos):
         """
         compute direction_to_drive and compute new self.neato_pos
@@ -479,6 +530,7 @@ class DriveStep(object):
 
     def drive(self, future_pos, speed):
         # initial state of operation upon function call is turn
+        self.on_speed_run = False
         direction_to_drive = self.compute_direction(future_pos)
         self.reset(direction_to_drive, speed)
 
@@ -493,8 +545,22 @@ class DriveStep(object):
         walls = self.return_walls()
         return walls
 
-    def drive_speedrun(self):
-        pass
+    def drive_speedrun(self, future_pos):
+        self.on_speed_run = True
+        direction_to_drive = self.compute_direction(future_pos)
+        self.reset2(direction_to_drive)
+        self.step_count = sqrt((future_pos[0]-pos[0])**2 + (future_pos[1]-pos[1])**2)
+
+        # self.reset()
+
+        while not rospy.is_shutdown() and self.state != self.idle:
+            self.state = self.state()
+
+        # setting final speed
+        motion = Twist()
+        motion.linear.x = 0
+        motion.angular.z = 0
+        self.speed_pub.publish(motion)
 
     def publish_turn(self, vals, starting_index):
         points_to_publish = [float("Inf")]*len(self.scan)
