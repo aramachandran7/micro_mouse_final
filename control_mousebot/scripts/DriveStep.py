@@ -34,7 +34,6 @@ from nav_msgs.msg import Odometry
 import numpy as np    #import sign, array, dot
 from statistics import mean
 from scipy import stats
-
 from geometry_msgs.msg import Twist, Vector3, Point
 from tf.transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker, MarkerArray
@@ -145,34 +144,31 @@ class DriveStep(object):
         self.max_turn_speed = None
         self.angle_increaser = 1.0
         self.distance_threshold = .02
-        self.scan_angle = 15
+        self.scan_angle = 10
         self.wall_precision_thresh = 0.70
 
         self.neato_pos = np.array((pos[0], pos[1],0)) #
         self.prev_45 = (None, None)
 
-        self.on_speed_run = False
-        self.step_count = 1 #number of steps the neato will drive for speedrun
-
     def turn(self):
         #print("Turning...")
         if self.direction_to_drive == 0.0: # if you're straight up forwards?
-            if self.on_speed_run:
-                return self.drive_forwards_speedrun
             return self.drive_forwards
         else:
             # compute angle to turn (closest rotation angle from a to b)
-            completion_percent = (0.9) if math.fabs(self.direction_to_drive==math.pi) else (0.65)
+            completion_percent = (0.85) if math.fabs(self.direction_to_drive==math.pi) else (0.65)
             if (math.fabs(self.theta_turned2/self.direction_to_drive) < completion_percent): # maybe 85
                 angle_to_turn = self.direction_to_drive - self.theta_turned2
+                self.publish_turn([], 0, odom=True) # indicate to /turn_points that you're using odom
                 # print("Using encoder: ", angle_to_turn)
             elif (self.skew is not None):
                 angle_to_turn = -self.skew[1]
 
-                #print("Using linreg: ", angle_to_turn)
+                # print("Using linreg: ", angle_to_turn)
             else:
                 # print("you're over 80 %, but you're still using the fucking encoder!")
                 angle_to_turn = self.direction_to_drive - self.theta_turned2
+                self.publish_turn([], 0, odom=True) # indicate to /turn_points that you're using odom
 
 
             # if self.skew and (math.fabs(self.theta_turned2/self.direction_to_drive) > .80):
@@ -189,52 +185,10 @@ class DriveStep(object):
             motion.linear.x = 0
 
             if math.fabs(angle_to_turn) < self.turn_cutoff:
-                if self.on_speed_run:
-                    return self.drive_forwards_speedrun
-                else:
-                    return self.drive_forwards
+                return self.drive_forwards
             else:
                 self.speed_pub.publish(motion)
                 return self.turn
-
-    def drive_forwards_speedrun(self):
-        if self.skew != None:
-            # If we have at least one wall
-            if self.skew[2] == 90:
-                sideskew = self.skew[0] - 0.084
-            elif self.skew[2] == 270:
-                sideskew = 0.084 - self.skew[0]
-            else:
-                sideskew = 0
-            angle_correction = self.max_turn_speed*2/(1+math.exp(10*self.skew[1])) - self.max_turn_speed
-            drift_correction = self.max_turn_speed*2/(1+math.exp(-25*sideskew)) - self.max_turn_speed
-
-            angvel = (angle_correction + drift_correction)/2
-        else: # if there's no walls and you're fucked
-            # print('You have no walls to go off of! Using only odom for movement')
-            angvel = 0
-
-        motion = Twist()
-        motion.linear.x = self.speed # TODO: add proporaitonal control based on distance driven
-
-        # set angular component of motion based on calculated skew
-        motion.angular.z = angvel
-        self.speed_pub.publish(motion)
-
-
-        if self.front_distance is not None:
-            # control logic if there is a front wall to correct off of
-            if math.fabs(self.front_distance - self.path_center) < self.distance_threshold:
-                return self.idle
-            else:
-                return self.drive_forwards
-        else:
-            if math.fabs(self.unit_length*self.step_count - self.distance_traveled) < self.distance_threshold:
-                return self.idle
-            else:
-                return self.drive_forwards
-
-# TODO: if sigmoid equations work equally well for speedrun, drive_forwards speedrun and drive forwards can be merged
 
     def drive_forwards(self):
         """
@@ -308,9 +262,48 @@ class DriveStep(object):
             #print("---DIDN'T FIND 'WALL' AHEAD--  ", self.prev_45)
             return None
 
+    # def compute_skew(self, center):
+    #     scan_angle = self.scan_angle
+    #
+    #     x_y = np.zeros((2, scan_angle*2))
+    #     if center == 0:
+    #         range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
+    #         self.publish_turn(range_of_angles, 0-scan_angle)
+    #         range_of_angles = range_of_angles[::-1]
+    #     else:
+    #         range_of_angles = self.scan[center-scan_angle:center+scan_angle]
+    #         self.publish_turn(range_of_angles, center-scan_angle)
+    #
+    #
+    #     for i, distance in enumerate(range_of_angles):
+    #         theta = center + (i-scan_angle)
+    #         if 0.055 <= distance <= 0.16:
+    #             x_y[0, i-1], x_y[1, i-1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
+    #         else:
+    #             np.delete(x_y, i-1, 1)
+    #
+    #
+    #     #print("Regression points", x_y)
+    #     x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
+    #     y_adj = x_y[1,:] - np.nanmean(x_y[1,:])
+    #
+    #     B_num = sum(np.multiply(x_adj, y_adj))
+    #     B_den = sum(np.square(x_adj))
+    #     if np.isnan(B_num) or np.isnan(B_den):
+    #         print("SLOPE IS NAN")
+    #
+    #     angle = math.atan2(B_num, B_den)
+    #     deg_angle = np.rad2deg(angle)
+    #
+    #     distance = self.scan[int(deg_angle + center)]
+    #     self.publish_vector(distance, angle)
+    #     return distance, angle, center
+
+
     def compute_skew(self, center):
         scan_angle = self.scan_angle
 
+        # obtain angle range
         x_y = np.zeros((scan_angle*2, 2))
         if center == 0:
             range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
@@ -320,13 +313,24 @@ class DriveStep(object):
             range_of_angles = self.scan[center-scan_angle:center+scan_angle]
             self.publish_turn(range_of_angles, center-scan_angle)
 
+        # handle case with shit ton of infs
+
+        # num_infs = 0
+        # for i in range_of_angles:
+        #     if i == float("Inf"):
+        #         num_infs +=1
+        # if (num_infs / len(range_of_angles)) > .60:
+        #     return  (0,0,0,0)
+
         for i, distance in enumerate(range_of_angles):
             theta = center + (i-scan_angle)
             if 0.055 <= distance <= 0.16:
                 x_y[i-1, 0], x_y[i-1, 1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
             else:
                 np.delete(x_y, i-1, 0)
+        # print("rows: ", x_y.shape[0], "total rows should be: ", len(range_of_angles))
 
+        # paul r value code
         Xmean0 = x_y - x_y.mean(axis=0)
         covar = Xmean0.T.dot(Xmean0)
         evals, evecs = np.linalg.eig(covar)
@@ -334,45 +338,20 @@ class DriveStep(object):
         E = Xmean0.dot(v)*v.T - Xmean0
         r_value = 1 - np.sum(np.square(E))/np.sum(np.square(Xmean0))
 
-        print("R_value: ", r_value)
+        if np.isnan(r_value):
+            # print("failed ", center )
+            return (0,0,center,r_value)
+        # print("success ", center, r_value)
 
-
-
-        # compute with scipy
+        # compute linregression with scipy
         slope, intercept, r_value, p_value, std_err = stats.linregress(x_y[:,0], x_y[:,1])
 
-
-        #print("Regression points", x_y)
-        # x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
-        # y_adj = x_y[1,:] - np.nanmean(x_y[1,:])
-
-
-        # Compute r_squared
-        # correlation_matrix = np.corrcoef(x_adj, y_adj)
-        # r_squared = correlation_matrix[0,1]**2
-        # if r_squared >= 0.5:
-        #     print("Probably not a straight wall:    ", r_squared)
-        #     return self.skew
-        # else:
-        #     print("rsquared shd be fine: ", r_squared)
-            #print('screqing up', x_y[0,:], x_y[1,:])
-
-
-
-        # B_num = sum(np.multiply(x_adj, y_adj))
-        # B_den = sum(np.square(x_adj))
-        # if np.isnan(B_num) or np.isnan(B_den):
-        #     print("SLOPE IS NAN")
-
-        #angle = math.atan2(evecs[1,0],evecs[0,0])
         angle = math.atan2(slope, 1)
         deg_angle = np.rad2deg(angle)
 
         distance = self.scan[int(deg_angle + center)]
         self.publish_vector(distance, angle) # TODO: check if lidar pokes through with front distance!!!
-
-
-        return distance, angle, center
+        return (distance, angle, center, r_value)
 
     def set_walls(self):
         scan_angle = self.scan_angle
@@ -383,7 +362,6 @@ class DriveStep(object):
         #
         # print("scanF: ", self.scan[-15:] + self.scan[:15])
         # print("scanR: ", self.scan[255:286])
-
         btm_range = .055
         slices = []
         for key in self.walls.keys():
@@ -404,23 +382,42 @@ class DriveStep(object):
             for i in slices:
                 if btm_range <= i <= top_range:
                     total_in_range += 1
-
             # if key =="F":
             #     print("total_in_range F: ", total_in_range, " slices: ", slices)
-
             self.walls[key] = (total_in_range/len(slices) > self.wall_precision_thresh) if len(slices)!=0 else False
 
     def set_walls_and_skew(self):
+        # This control logic is dogshit, pick highest r squared
         self.set_walls()
+        skews = []
+        skews.append(self.compute_skew(0))
+        skews.append(self.compute_skew(180))
+        skews.append(self.compute_skew(90))
+        skews.append(self.compute_skew(270))
 
-        if self.walls['B']:
-            self.skew = self.compute_skew(180)
-        elif self.walls['L']:
-            self.skew = self.compute_skew(90)
-        elif self.walls['R']:
-            self.skew = self.compute_skew(270)
-        elif self.walls['F']:
-            self.skew = self.compute_skew(0)
+        top_skew = max(skews, key = lambda i : i[3])
+        # if (all((i[3]==) for i in self.scan[45-1:45+1+1]),
+        if np.isnan(top_skew[3]):
+            print('top skew invalid', top_skew[2])
+            self.skew = None
+        else:
+            self.skew = top_skew
+            print("using Skew direction and r value: ", self.skew[2], self.skew[3])
+        # print("no skew")
+        # skew_l = self.compute_skew(90)
+        # skew_r = self.compute_skew(270)
+        # skew_f = self.compute_skew(0)
+        # print("R values of F B L R", skew_f[3], skew_b[3], skew_l[3], skew_r[3])
+
+
+        # if self.walls['B']:
+        #     self.skew = self.compute_skew(180)
+        # elif self.walls['L']:
+        #     self.skew = self.compute_skew(90)
+        # elif self.walls['R']:
+        #     self.skew = self.compute_skew(270)
+        # else:
+        #     self.skew = None
 
     def compute_prev_45(self):
         # grab scan data and return True for wall @ 45 / 315 and false for no wall at ~45's
@@ -429,6 +426,17 @@ class DriveStep(object):
         return (all((i >= .055 and i <= .15) for i in self.scan[45-1:45+1+1]),
                 all((i >= .055 and i <= .15) for i in self.scan[315-1:315+1+1])
          )
+    def compute_front_distance(self, l, r):
+        """ given a scalene triangle denoted by lidar, compute distance to front"""
+
+        a = self.scan[l]
+        b = self.scan[r]
+        theta = np.deg2rad(math.fabs(r-l))
+        c = math.sqrt(a**2 + b**2 + 2*a*b*np.cos(theta))
+        s = (a+b+c)/2.0
+        area = math.sqrt((s*(s-a)*(s-b)*(s-c)))
+        print("theta: ", theta, "c: ", c, "area: ", area, "s: ", s, "inside: ", (s*(s-a)*(s-b)*(s-c)))
+        return 2*area/c
 
     def scan_recieved(self, msg):
         """ callback for /scan -- > computes self.walls, self.front_distance, self.skew, self.prev_45"""
@@ -468,15 +476,6 @@ class DriveStep(object):
         # set global driving conditions based on params
         self.direction_to_drive = direction_to_drive
         self.speed = speed
-        self.state = self.turn
-        self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
-        self.theta_turned2 = 0
-        self.distance_traveled = 0
-        self.max_turn_speed = 4.0
-
-    def reset2(self, direction_to_drive):
-        # set global driving conditions based on params
-        self.direction_to_drive = direction_to_drive
         self.state = self.turn
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
         self.theta_turned2 = 0
@@ -530,7 +529,6 @@ class DriveStep(object):
 
     def drive(self, future_pos, speed):
         # initial state of operation upon function call is turn
-        self.on_speed_run = False
         direction_to_drive = self.compute_direction(future_pos)
         self.reset(direction_to_drive, speed)
 
@@ -545,24 +543,16 @@ class DriveStep(object):
         walls = self.return_walls()
         return walls
 
-    def drive_speedrun(self, future_pos):
-        self.on_speed_run = True
-        direction_to_drive = self.compute_direction(future_pos)
-        self.reset2(direction_to_drive)
-        #self.step_count = math.sqrt((future_pos[0]-pos[0])**2 + (future_pos[1]-pos[1])**2)
+    def speed_run(self):
+        pass
 
-        # self.reset()
+    def publish_turn(self, vals, starting_index, odom=False):
+        if odom: # indicate to /turn_points that you're using odom, publishes empty
+            points_to_publish = [float("Inf")]*len(self.scan)
+            self.ls_object.ranges= points_to_publish
+            self.turn_pub.publish(self.ls_object) # TODO: need to copy?
+            return
 
-        while not rospy.is_shutdown() and self.state != self.idle:
-            self.state = self.state()
-
-        # setting final speed
-        motion = Twist()
-        motion.linear.x = 0
-        motion.angular.z = 0
-        self.speed_pub.publish(motion)
-
-    def publish_turn(self, vals, starting_index):
         points_to_publish = [float("Inf")]*len(self.scan)
         pointer = starting_index
         if len(vals) + starting_index > len(self.scan):
