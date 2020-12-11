@@ -189,6 +189,11 @@ class DriveStep(object):
                 self.speed_pub.publish(motion)
                 return self.turn
 
+    def drive_speedrun(self):
+        pass
+
+
+
     def drive_forwards(self):
         """
         state for drive forwards
@@ -290,7 +295,7 @@ class DriveStep(object):
 
 
         # Compute r_squared
-        print("R_value: ", r_value)
+        print("R_value: ", r_value**2)
         # correlation_matrix = np.corrcoef(x_adj, y_adj)
         # r_squared = correlation_matrix[0,1]**2
         # if r_squared >= 0.5:
@@ -307,7 +312,7 @@ class DriveStep(object):
         # if np.isnan(B_num) or np.isnan(B_den):
         #     print("SLOPE IS NAN")
 
-        angle = math.atan2(slope)
+        angle = math.atan2(slope,1)
         deg_angle = np.rad2deg(angle)
 
         distance = self.scan[int(deg_angle + center)]
@@ -488,7 +493,7 @@ class DriveStep(object):
         walls = self.return_walls()
         return walls
 
-    def speed_run(self):
+    def drive_speedrun(self):
         pass
 
     def publish_turn(self, vals, starting_index):

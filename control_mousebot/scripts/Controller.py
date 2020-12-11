@@ -46,6 +46,8 @@ def run():
 
     # optimized_path = path_planner.generate_optimal(graph)
     # driver.speed_run(optimized_path)
+    optimized_path = [(0,2), (5,2)]
+    
 
 if __name__ == '__main__':
     run()
