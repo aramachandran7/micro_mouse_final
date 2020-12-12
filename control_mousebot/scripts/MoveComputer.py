@@ -17,6 +17,7 @@ class MoveComputer2(object):
         self.debug = True
         self.debug_rec = False
         self.coef = 1
+        self.recursion_steps = 0
         # self.dp_coef = 1.0
 
     def compute_next_move(self, graph, pos):
@@ -62,7 +63,7 @@ class MoveComputer2(object):
 
     def compute_unkown_distance(self, pos, index):
         # using position and index of connection, compute distance to unkown node recursively
-
+        self.recursion_steps += 1
         new_node = self.graph[pos][index] # returns tuple
 
         if not new_node in self.graph.keys(): # this is our base case
@@ -75,13 +76,16 @@ class MoveComputer2(object):
                 if self.debug_rec:
                     print("pos: %s, i: %s" %(new_node, i))
                 if direction != pos:
-                    val = self.compute_unkown_distance(new_node, i)
-                    if val is not None:
-                        distances.append(val+1)
+                    if self.recursion_steps <= 500:
+                        val = self.compute_unkown_distance(new_node, i)
+                        if val is not None:
+                            distances.append(val+1)
+                    else:
+                        print("maxed out recursion steps", self.recursion_steps)
 
                     # if val is not None:
                     #     return val+1
             #print("found distances: ", distances)
-
+            self.recursion_steps = 0
             return min(distances) if (len(distances) != 0) else None  # handles case where the only direction was the original node
             # return None
