@@ -163,6 +163,7 @@ class DriveStep(object):
                 # print("Using encoder: ", angle_to_turn)
             elif (self.skew is not None):
                 angle_to_turn = -self.skew[1]
+                print(angle_to_turn)
 
                 # print("Using linreg: ", angle_to_turn)
             else:
@@ -262,49 +263,10 @@ class DriveStep(object):
             #print("---DIDN'T FIND 'WALL' AHEAD--  ", self.prev_45)
             return None
 
-    # def compute_skew(self, center):
-    #     scan_angle = self.scan_angle
-    #
-    #     x_y = np.zeros((2, scan_angle*2))
-    #     if center == 0:
-    #         range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
-    #         self.publish_turn(range_of_angles, 0-scan_angle)
-    #         range_of_angles = range_of_angles[::-1]
-    #     else:
-    #         range_of_angles = self.scan[center-scan_angle:center+scan_angle]
-    #         self.publish_turn(range_of_angles, center-scan_angle)
-    #
-    #
-    #     for i, distance in enumerate(range_of_angles):
-    #         theta = center + (i-scan_angle)
-    #         if 0.055 <= distance <= 0.16:
-    #             x_y[0, i-1], x_y[1, i-1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
-    #         else:
-    #             np.delete(x_y, i-1, 1)
-    #
-    #
-    #     #print("Regression points", x_y)
-    #     x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
-    #     y_adj = x_y[1,:] - np.nanmean(x_y[1,:])
-    #
-    #     B_num = sum(np.multiply(x_adj, y_adj))
-    #     B_den = sum(np.square(x_adj))
-    #     if np.isnan(B_num) or np.isnan(B_den):
-    #         print("SLOPE IS NAN")
-    #
-    #     angle = math.atan2(B_num, B_den)
-    #     deg_angle = np.rad2deg(angle)
-    #
-    #     distance = self.scan[int(deg_angle + center)]
-    #     self.publish_vector(distance, angle)
-    #     return distance, angle, center
-
-
     def compute_skew(self, center):
         scan_angle = self.scan_angle
 
-        # obtain angle range
-        x_y = np.zeros((scan_angle*2, 2))
+        x_y = np.zeros((2, scan_angle*2))
         if center == 0:
             range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
             self.publish_turn(range_of_angles, 0-scan_angle)
@@ -313,45 +275,84 @@ class DriveStep(object):
             range_of_angles = self.scan[center-scan_angle:center+scan_angle]
             self.publish_turn(range_of_angles, center-scan_angle)
 
-        # handle case with shit ton of infs
-
-        # num_infs = 0
-        # for i in range_of_angles:
-        #     if i == float("Inf"):
-        #         num_infs +=1
-        # if (num_infs / len(range_of_angles)) > .60:
-        #     return  (0,0,0,0)
 
         for i, distance in enumerate(range_of_angles):
             theta = center + (i-scan_angle)
             if 0.055 <= distance <= 0.16:
-                x_y[i-1, 0], x_y[i-1, 1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
+                x_y[0, i-1], x_y[1, i-1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
             else:
-                np.delete(x_y, i-1, 0)
-        # print("rows: ", x_y.shape[0], "total rows should be: ", len(range_of_angles))
+                np.delete(x_y, i-1, 1)
 
-        # paul r value code
-        Xmean0 = x_y - x_y.mean(axis=0)
-        covar = Xmean0.T.dot(Xmean0)
-        evals, evecs = np.linalg.eig(covar)
-        v = evecs[:,0][:,np.newaxis]
-        E = Xmean0.dot(v)*v.T - Xmean0
-        r_value = 1 - np.sum(np.square(E))/np.sum(np.square(Xmean0))
 
-        if np.isnan(r_value):
-            # print("failed ", center )
-            return (0,0,center,r_value)
-        # print("success ", center, r_value)
+        #print("Regression points", x_y)
+        x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
+        y_adj = x_y[1,:] - np.nanmean(x_y[1,:])
 
-        # compute linregression with scipy
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x_y[:,0], x_y[:,1])
+        B_num = sum(np.multiply(x_adj, y_adj))
+        B_den = sum(np.square(x_adj))
+        if np.isnan(B_num) or np.isnan(B_den):
+            print("SLOPE IS NAN")
 
-        angle = math.atan2(slope, 1)
+        angle = math.atan2(B_num, B_den)
         deg_angle = np.rad2deg(angle)
 
         distance = self.scan[int(deg_angle + center)]
-        self.publish_vector(distance, angle) # TODO: check if lidar pokes through with front distance!!!
-        return (distance, angle, center, r_value)
+        self.publish_vector(distance, angle)
+        return distance, angle, center
+
+
+    # def compute_skew(self, center):
+    #     scan_angle = self.scan_angle
+    #
+    #     # obtain angle range
+    #     x_y = np.zeros((scan_angle*2, 2))
+    #     if center == 0:
+    #         range_of_angles = self.scan[0-scan_angle:] + self.scan[:scan_angle+1]
+    #         self.publish_turn(range_of_angles, 0-scan_angle)
+    #         range_of_angles = range_of_angles[::-1]
+    #     else:
+    #         range_of_angles = self.scan[center-scan_angle:center+scan_angle]
+    #         self.publish_turn(range_of_angles, center-scan_angle)
+    #
+    #     # handle case with shit ton of infs
+    #
+    #     # num_infs = 0
+    #     # for i in range_of_angles:
+    #     #     if i == float("Inf"):
+    #     #         num_infs +=1
+    #     # if (num_infs / len(range_of_angles)) > .60:
+    #     #     return  (0,0,0,0)
+    #
+    #     for i, distance in enumerate(range_of_angles):
+    #         theta = center + (i-scan_angle)
+    #         if 0.055 <= distance <= 0.16:
+    #             x_y[i-1, 0], x_y[i-1, 1] = self.help.pol2cart(distance, np.deg2rad(theta-center))
+    #         else:
+    #             np.delete(x_y, i-1, 0)
+    #     # print("rows: ", x_y.shape[0], "total rows should be: ", len(range_of_angles))
+    #
+    #     # paul r value code
+    #     Xmean0 = x_y - x_y.mean(axis=0)
+    #     covar = Xmean0.T.dot(Xmean0)
+    #     evals, evecs = np.linalg.eig(covar)
+    #     v = evecs[:,0][:,np.newaxis]
+    #     E = Xmean0.dot(v)*v.T - Xmean0
+    #     r_value = 1 - np.sum(np.square(E))/np.sum(np.square(Xmean0))
+    #
+    #     if np.isnan(r_value):
+    #         # print("failed ", center )
+    #         return (0,0,center,r_value)
+    #     # print("success ", center, r_value)
+    #
+    #     # compute linregression with scipy
+    #     slope, intercept, r_value, p_value, std_err = stats.linregress(x_y[:,0], x_y[:,1])
+    #
+    #     angle = math.atan2(slope, 1)
+    #     deg_angle = np.rad2deg(angle)
+    #
+    #     distance = self.scan[int(deg_angle + center)]
+    #     self.publish_vector(distance, angle) # TODO: check if lidar pokes through with front distance!!!
+    #     return (distance, angle, center, r_value)
 
     def set_walls(self):
         scan_angle = self.scan_angle
@@ -389,35 +390,31 @@ class DriveStep(object):
     def set_walls_and_skew(self):
         # This control logic is dogshit, pick highest r squared
         self.set_walls()
-        skews = []
-        skews.append(self.compute_skew(0))
-        skews.append(self.compute_skew(180))
-        skews.append(self.compute_skew(90))
-        skews.append(self.compute_skew(270))
-
-        top_skew = max(skews, key = lambda i : i[3])
-        # if (all((i[3]==) for i in self.scan[45-1:45+1+1]),
-        if np.isnan(top_skew[3]):
-            print('top skew invalid', top_skew[2])
-            self.skew = None
-        else:
-            self.skew = top_skew
-            print("using Skew direction and r value: ", self.skew[2], self.skew[3])
-        # print("no skew")
-        # skew_l = self.compute_skew(90)
-        # skew_r = self.compute_skew(270)
-        # skew_f = self.compute_skew(0)
-        # print("R values of F B L R", skew_f[3], skew_b[3], skew_l[3], skew_r[3])
-
-
-        # if self.walls['B']:
-        #     self.skew = self.compute_skew(180)
-        # elif self.walls['L']:
-        #     self.skew = self.compute_skew(90)
-        # elif self.walls['R']:
-        #     self.skew = self.compute_skew(270)
-        # else:
+        # skews = []
+        # skews.append(self.compute_skew(0))
+        # skews.append(self.compute_skew(180))
+        # skews.append(self.compute_skew(90))
+        # skews.append(self.compute_skew(270))
+        #
+        # top_skew = max(skews, key = lambda i : i[3])
+        # # if (all((i[3]==) for i in self.scan[45-1:45+1+1]),
+        # if np.isnan(top_skew[3]):
+        #     print('top skew invalid', top_skew[2])
         #     self.skew = None
+        # else:
+        #     self.skew = top_skew
+        #     print("using Skew direction and r value: ", self.skew[2], self.skew[3])
+        # print("no skew")
+
+
+        if self.walls['L']:
+            self.skew = self.compute_skew(90)
+        elif self.walls['R']:
+            self.skew = self.compute_skew(270)
+        elif self.walls['B']:
+            self.skew = self.compute_skew(180)
+        else:
+            self.skew = None
 
     def compute_prev_45(self):
         # grab scan data and return True for wall @ 45 / 315 and false for no wall at ~45's
