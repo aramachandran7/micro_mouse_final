@@ -35,8 +35,7 @@ def run():
         walls = driver.drive(next_pos, speed) # updates walls, position
         pos = next_pos
         print(' ')
-        time.sleep(.3)
-
+        #time.sleep(.3)
     # code for mousebot to reverse track back to starting point
 
     # graph.center = (0,0)

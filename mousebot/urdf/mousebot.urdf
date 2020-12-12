@@ -49,7 +49,7 @@
     name="R_wheel">
     <inertial>
       <origin
-        xyz="-2.1684E-19 -0.00635 -6.9389E-18"
+        xyz="0 -0.00635 0"
         rpy="0 0 0" />
       <mass
         value="0.010055" />
@@ -106,7 +106,7 @@
     name="L_wheel">
     <inertial>
       <origin
-        xyz="2.1684E-19 0.00635 -1.3878E-17"
+        xyz="0 0.00635 0"
         rpy="0 0 0" />
       <mass
         value="0.010055" />
@@ -251,9 +251,9 @@
       <updateRate>100</updateRate>
       <leftJoint>L_wheel_cont</leftJoint>
       <rightJoint>R_wheel_cont</rightJoint>
-      <wheelSeparation>0.0762</wheelSeparation>
-      <wheelDiameter>0.03175</wheelDiameter>
-      <torque>10</torque>
+      <wheelSeparation>0.088</wheelSeparation>
+      <wheelDiameter>0.0310</wheelDiameter>
+      <torque>20</torque>
       <commandTopic>cmd_vel</commandTopic>
       <odometryTopic>odom</odometryTopic>
       <odometryFrame>odom</odometryFrame>
