@@ -123,7 +123,7 @@ class DriveStep(object):
         self.front_distance = None # distance to approximate 'front wall'
         self.skew = None
         self.angle_skew = None
-
+        self.r_value = 0
         self.state = self.turn
 
         # setup pub sub
@@ -144,7 +144,7 @@ class DriveStep(object):
         self.max_turn_speed = None
         self.angle_increaser = 1.0
         self.distance_threshold = .02
-        self.scan_angle = 10
+        self.scan_angle = 20
         self.wall_precision_thresh = 0.70
 
         self.neato_pos = np.array((pos[0], pos[1],0)) #
@@ -163,7 +163,7 @@ class DriveStep(object):
                 # print("Using encoder: ", angle_to_turn)
             elif (self.skew is not None):
                 angle_to_turn = -self.skew[1]
-                print(angle_to_turn)
+                print("angle_to_turn_lidar:", angle_to_turn, "from: ", self.skew[2], "rValue: ", self.r_value)
 
                 # print("Using linreg: ", angle_to_turn)
             else:
@@ -283,6 +283,13 @@ class DriveStep(object):
             else:
                 np.delete(x_y, i-1, 1)
 
+        # paul r value code
+        Xmean0 = x_y.T - x_y.T.mean(axis=0)
+        covar = Xmean0.T.dot(Xmean0)
+        evals, evecs = np.linalg.eig(covar)
+        v = evecs[:,0][:,np.newaxis]
+        E = Xmean0.dot(v)*v.T - Xmean0
+        self.r_value = 1 - np.sum(np.square(E))/np.sum(np.square(Xmean0))
 
         #print("Regression points", x_y)
         x_adj = x_y[0,:] - np.nanmean(x_y[0,:])
@@ -423,6 +430,7 @@ class DriveStep(object):
         return (all((i >= .055 and i <= .15) for i in self.scan[45-1:45+1+1]),
                 all((i >= .055 and i <= .15) for i in self.scan[315-1:315+1+1])
          )
+
     def compute_front_distance(self, l, r):
         """ given a scalene triangle denoted by lidar, compute distance to front"""
 
