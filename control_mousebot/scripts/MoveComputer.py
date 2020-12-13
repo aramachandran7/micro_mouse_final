@@ -17,7 +17,6 @@ class MoveComputer2(object):
         self.debug = True
         self.debug_rec = False
         self.coef = 1
-        self.recursion_steps = 0
         # self.dp_coef = 1.0
 
     def compute_next_move(self, graph, pos):
@@ -45,7 +44,7 @@ class MoveComputer2(object):
                 if self.debug:
                     print("recursing for ", direction)
                     # print(self.graph)
-                num_to_unknown = self.compute_unkown_distance(pos, i) # pass tuple, index
+                num_to_unknown = self.compute_unkown_distance(pos, i, 0) # pass tuple, index
                 # if self.debug:
                 #     print("%s: num_to_unknown: %s, dp: %s, m_vec: %s, gv: %s" %(direction, num_to_unknown, dp, m_vec, guiding_vector))
 
@@ -61,31 +60,32 @@ class MoveComputer2(object):
         # self.publish_vector(guiding_vector[0], guiding_vector[1])
 
 
-    def compute_unkown_distance(self, pos, index):
+    def compute_unkown_distance(self, pos, index, depth_recursions):
         # using position and index of connection, compute distance to unkown node recursively
-        self.recursion_steps += 1
         new_node = self.graph[pos][index] # returns tuple
 
         if not new_node in self.graph.keys(): # this is our base case
             return 0
         else:
+            if depth_recursions>200:
+                print("you're in a loop! Returning None.")
+                return None
+
             if self.debug_rec:
                 print("connections to pos %s" %(self.graph[new_node]))
+
+            depth_recursions += 1
             distances = []
             for i, direction in enumerate(self.graph[new_node]):
                 if self.debug_rec:
                     print("pos: %s, i: %s" %(new_node, i))
                 if direction != pos:
-                    if self.recursion_steps <= 500:
-                        val = self.compute_unkown_distance(new_node, i)
-                        if val is not None:
-                            distances.append(val+1)
-                    else:
-                        print("maxed out recursion steps", self.recursion_steps)
+                    val = self.compute_unkown_distance(new_node, i, depth_recursions)
+                    if val is not None:
+                        distances.append(val+1)
 
                     # if val is not None:
                     #     return val+1
             #print("found distances: ", distances)
-            self.recursion_steps = 0
             return min(distances) if (len(distances) != 0) else None  # handles case where the only direction was the original node
             # return None
