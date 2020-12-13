@@ -94,7 +94,7 @@ class DriveStep(object):
 
     """
 
-    def __init__(self, pos=(0,0), unit_length=0.192):
+    def __init__(self, pos=(0,0), unit_length=0.188):
 
         rospy.init_node('DriveStep')
 

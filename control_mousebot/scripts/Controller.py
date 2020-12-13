@@ -16,6 +16,9 @@ def run():
     # pos = (0,0)
     pos = (0,0)
     target = (7.5, 7.5)
+    len_nodes_visited = 5
+    nodes_visited = [0]*len_nodes_visited
+    pointer = 0
 
     # creating objects
     MoveComputer = MoveComputer2()
@@ -34,8 +37,19 @@ def run():
         print("Moving to:   ", next_pos)
         walls = driver.drive(next_pos, speed) # updates walls, position
         pos = next_pos
+
+        nodes_visited[pointer] = pos
+
+        counter = 0
+        for visited in nodes_visited:
+            if visited == nodes_visited[pointer]:
+                counter += 1
+        if counter >=3:
+            print("you're in a back and forth loop, altering MoveComputer2 code")
+            MoveComputer.coef = 2.0
+        pointer = (pointer+1)%len_nodes_visited
         print(' ')
-        #time.sleep(.3)
+        time.sleep(.3)
     # code for mousebot to reverse track back to starting point
 
     # graph.center = (0,0)

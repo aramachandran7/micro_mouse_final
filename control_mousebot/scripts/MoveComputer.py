@@ -4,6 +4,15 @@ Objective - to compute the next move for the robot in the mapping phase given th
 design decisions -
 isolate heading of robot
 implement memoizaiton w/ memo table?
+
+save dictionary information
+
+
+guardian angel -
+think long term, and pathplan to that point. How do you select which point is the best and use different metrics
+than what we'd use by default?
+
+adjust confidence compute strategy with circular buffer of nodes visited
 """
 import numpy as np
 import math
@@ -16,7 +25,8 @@ class MoveComputer2(object):
         self.target = np.array((7.5, 7.5)) # maze target
         self.debug = True
         self.debug_rec = False
-        self.coef = 1
+        self.coef = 1.0
+        self.recursion_limit = 80
         # self.dp_coef = 1.0
 
     def compute_next_move(self, graph, pos):
@@ -49,7 +59,7 @@ class MoveComputer2(object):
                 #     print("%s: num_to_unknown: %s, dp: %s, m_vec: %s, gv: %s" %(direction, num_to_unknown, dp, m_vec, guiding_vector))
 
                 if num_to_unknown is not None:
-                    self.confidences.append(dp*(self.coef/(1+(num_to_unknown*2)))) # TODO: fix computation
+                    self.confidences.append(dp/(1.0+(num_to_unknown*self.coef))) # TODO: fix computation
                 else:
                     self.confidences.append(0.0) # there is only a dead end in this direction
             # pick index of top confdince and get corresponding direction from self.graph
@@ -61,13 +71,22 @@ class MoveComputer2(object):
 
 
     def compute_unkown_distance(self, pos, index, depth_recursions):
+        """ Other things to try -
+        could store visited nodes in every recursive call, check if node has been visited return none.
+        Variable memory.
+
+        It doesn't store it's previous moves, only its understanding of the map. So when the robot is in a part of the map
+        it's already explored, it has a high liklihood to get stuck in a 'back and forth' loop
+
+
+        """
         # using position and index of connection, compute distance to unkown node recursively
         new_node = self.graph[pos][index] # returns tuple
 
         if not new_node in self.graph.keys(): # this is our base case
             return 0
         else:
-            if depth_recursions>200:
+            if depth_recursions>self.recursion_limit:
                 print("you're in a loop! Returning None.")
                 return None
 
