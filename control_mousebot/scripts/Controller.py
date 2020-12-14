@@ -14,7 +14,7 @@ class Controller(object):
 
         # params for driving
         self.speed = 0.3
-        unit_length = 0.193
+        unit_length = 0.188
 
         # positions
         self.pos = (0,0)
@@ -22,31 +22,32 @@ class Controller(object):
 
         # circular buffer for nodes visited
         self.len_nodes_visited = 5
-        self.nodes_visited = [0]*len_nodes_visited
+        self.nodes_visited = [0]*self.len_nodes_visited
         self.pointer = 0
 
         # initializing objects
         self.MoveComputer = MoveComputer2()
         self.graph = Graph2()
-        self.driver = DriveStep(pos, unit_length=unit_length)
+        self.driver = DriveStep(self.pos, unit_length=unit_length)
         self.planner = PathPlanner()
 
         self.previous_graph = None # dictionary, not graph object.
+
 
     def run(self):
         """ blocking code while loop for mousebot reach center """
         walls = self.driver.return_walls(first=True) # compute first walls before movement
         print('walls returned first: ', walls)
         pos = self.pos
-        while (pos not in target_list) and not rospy.is_shutdown():
+        while (pos not in self.target_list) and not rospy.is_shutdown():
             print('movement!=======================================================================')
             self.graph.update_graph(pos, walls)
             next_pos = self.MoveComputer.compute_next_move(self.graph, pos)
             print("Moving to:   ", next_pos)
-            walls = self.driver.drive(next_pos, speed) # updates walls, position
+            walls = self.driver.drive(next_pos, self.speed) # updates walls, position
             pos = next_pos
 
-            self.nodes_visited[pointer] = pos
+            self.nodes_visited[self.pointer] = pos
 
             counter = 0
             for visited in self.nodes_visited:
@@ -69,13 +70,14 @@ class Controller(object):
         """test pathplanning code with imported maze graph"""
 
         target = (8,7)
+        pos = self.pos
         self.previous_graph = np.load('mazes/graph.npy',allow_pickle='TRUE').item()
 
-        path_to_center = self.planner.a_star(previous_graph, start=pos, target=target)
+        path_to_center = self.planner.a_star(self.previous_graph, start=pos, target=target)
         for position in path_to_center:
             print('movement!=======================================================================')
             print("Moving to:   ", position)
-            walls = self.driver.drive(position, speed) # updates walls, position
+            walls = self.driver.drive(position, self.speed) # updates walls, position
             pos = position
             print(' ')
             time.sleep(.3)
@@ -100,4 +102,4 @@ class Controller(object):
 
 if __name__ == '__main__':
     control = Controller()
-    control.run()
+    control.test_pathplanning()   #test_pathplanning()

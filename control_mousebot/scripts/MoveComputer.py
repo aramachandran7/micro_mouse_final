@@ -65,7 +65,7 @@ class MoveComputer2(object):
                     distance_to_center = math.sqrt((location[1]-self.target[1])**2 + (location[0]-self.target[0])**2)/math.sqrt(2*(7.5**2)) # size matters; smaller is better
                     num_to_unknown /= self.recursion_limit
                     print("distance to center: ", distance_to_center, "num to unknown: ", num_to_unknown)
-                    self.confidences.append(1/(distance_to_center*(1.0+num_to_unknown*50))) # TODO: fix computation  50 WORKED!!
+                    self.confidences.append(1/(distance_to_center*(1.0+num_to_unknown*6))) # TODO: fix computation  50 WORKED!!
                 else:
                     self.confidences.append(0.0) # there is only a dead end in this direction
             # pick index of top confdince and get corresponding direction from self.graph

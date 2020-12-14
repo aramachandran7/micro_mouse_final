@@ -15,7 +15,7 @@ class PathPlanner(object):
         self.graph = None
         self.values = None
         self.iterations = 0
-        self.max_iterations = maze_sl**2 / 2
+        self.max_iterations = 1000 #maze_sl**2 / 2
         self.debug = True
 
 
