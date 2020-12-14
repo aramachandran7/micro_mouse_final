@@ -46,7 +46,10 @@ def run():
                 counter += 1
         if counter >=3:
             print("you're in a back and forth loop, altering MoveComputer2 code")
-            MoveComputer.coef = 2.0
+            MoveComputer.coef = 3.0
+        # else:
+        #     MoveComputer.coef = 1.0
+
         pointer = (pointer+1)%len_nodes_visited
         print(' ')
         time.sleep(.3)
