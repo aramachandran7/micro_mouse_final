@@ -33,6 +33,8 @@ class Controller(object):
 
         self.previous_graph = None # dictionary, not graph object.
 
+        self.save = True # for saving the graph
+
 
     def run(self):
         """ blocking code while loop for mousebot reach center """
@@ -64,7 +66,11 @@ class Controller(object):
 
         print("reached center")
         # save dictionary
-        np.save('mazes/graph.npy', self.graph.graph)
+        if self.save:
+            time.sleep(5)
+
+            print("should be complete graph, saving ... ", self.graph.graph)
+            np.save('mazes/graph.npy', self.graph.graph)
 
     def test_pathplanning(self):
         """test pathplanning code with imported maze graph"""
@@ -73,33 +79,41 @@ class Controller(object):
         pos = self.pos
         self.previous_graph = np.load('mazes/graph.npy',allow_pickle='TRUE').item()
 
+        print("prev graph: ", self.previous_graph)
+
         path_to_center = self.planner.a_star(self.previous_graph, start=pos, target=target)
-        for position in path_to_center:
-            print('movement!=======================================================================')
-            print("Moving to:   ", position)
-            walls = self.driver.drive(position, self.speed) # updates walls, position
-            pos = position
-            print(' ')
-            time.sleep(.3)
+        while not rospy.is_shutdown():
+            for position in path_to_center:
+                print('movement!=======================================================================')
+                print("Moving to:   ", position)
+                walls = self.driver.drive(position, self.speed) # updates walls, position
+                pos = position
+                print(' ')
+                time.sleep(.3)
+            break
 
         print("At Center.")
+
 
     def get_home(self):
         # code for mousebot to reverse track back to starting point
         target = (0,0)
         path_to_home = self.planner.a_star(self.graph.graph, start=self.pos, target=target)
         pos = self.pos
-        for position in path_to_home:
-            print('movement!=======================================================================')
-            print("Moving to:   ", position)
-            walls = self.driver.drive(position, speed) # updates walls, position
-            pos = position
-            print(' ')
-            time.sleep(.3)
-
+        while not rospy.is_shutdown():
+            for position in path_to_home:
+                print('movement!=======================================================================')
+                print("Moving to:   ", position)
+                walls = self.driver.drive(position, speed) # updates walls, position
+                pos = position
+                print(' ')
+                time.sleep(.3)
+            break
+            
         print("Back home.")
 
 
 if __name__ == '__main__':
     control = Controller()
-    control.test_pathplanning()   #test_pathplanning()
+    control.test_pathplanning()
+    # control.run()
