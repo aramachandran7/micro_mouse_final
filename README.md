@@ -67,3 +67,11 @@ coputaiton()
 driver.drive('E',25)
 
 ```
+
+
+## First Maze completion next steps
+
+Recognize hit center
+test & run pathplanner object to return path and reach (0,0)
+
+recognize (0,0)

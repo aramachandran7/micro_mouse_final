@@ -1,13 +1,13 @@
 """objective - generate optimal path
 
-pseudo code from article : 
+pseudo code from article :
 https://gist.github.com/ryancollingwood/32446307e976a11a1185a5394d6657bc
 
 
 
-A star pseudocode 
+A star pseudocode
 
-you have an open list and closed list 
+you have an open list and closed list
 """
 
 class PathPlanner(object):
@@ -19,11 +19,11 @@ class PathPlanner(object):
         self.debug = True
 
 
-    def init_graph(self, graph): 
+    def init_graph(self, graph):
         self.iterations = 0 # reset
-        self.graph = graph.graph.copy() # create a copy of the graph to make edits to. 
-        for key in self.graph.keys(): # create F G H values and None Parent for every node. 
-            self.graph[key] = {"conns": self.graph[key], "F": 0, "G": 0, "H": 0, "parent": None} 
+        self.graph = {} # create a copy of the graph to make edits to.
+        for key in graph.keys(): # create F G H values and None Parent for every node.
+            self.graph[key] = {"conns": graph[key], "F": 0, "G": 0, "H": 0, "parent": None} # TODO: Set these values?
 
 
     def a_star(self, graph, start=(0,0), target=(7,7)):
@@ -32,70 +32,70 @@ class PathPlanner(object):
         """
         self.init_graph(graph)
 
-        ol = [] # open list 
-        cl = [] # closed list 
+        ol = [] # open list
+        cl = [] # closed list
         ol.append(start)
-        while len(ol)>0: 
+        while len(ol)>0:
 
-            # set current node as lowest f in the open list 
+            # set current node as lowest f in the open list
             lowest_f = 10000
-            for i, node in enumerate(ol): 
-                if self.graph[node].f  < lowest_f: 
+            for i, node in enumerate(ol):
+                if self.graph[node]['F']  < lowest_f:
                     CN = node
                     i_lowest_f = i
 
 
             # remove CN from open list, move to closed
-            ol.pop(i_lowest_f) 
+            ol.pop(i_lowest_f)
             # handle base cases or failure modes
-            if self.iterations > self.max_iterations: 
+            if self.iterations > self.max_iterations:
                 print("failed to complete before max iterations")
                 return self.return_path(CN)
 
-            if CN == target: 
-                return self.return_path(CN)                
+            if CN == target:
+                return self.return_path(CN)
 
-            # generate all 8 children nodes surrounding CN , walkt through 
+            # generate all 8 children nodes surrounding CN , walkt through
             directions = self.graph[CN]["conns"]
 
-            for child in directions: # CN is parent 
+            for child in directions: # CN is parent
 
-                # ensure child isn't on the closed list 
-                if child in cl: 
-                    continue 
-
-                # compute f g h
-                self.graph[child].g = self.graph[CN].g + 1
-
-                if len([open_node for open_node in ol if child == open_node and self.graph[child].g > self.graph[open_node].g]) > 0:
+                # ensure child isn't on the closed list
+                if child in cl:
                     continue
 
-                self.graph[child].h = self.pythag(child,target)
-                self.graph[child].f = self.graph[child].h + self.graph[child].g
-                
-                if self.debug: 
+                # compute f g h
+                self.graph[child]['G'] = self.graph[CN]['G'] + 1
+
+                if len([open_node for open_node in ol if child == open_node and self.graph[child]['G'] > self.graph[open_node]['G']]) > 0:
+                    continue
+
+                self.graph[child]['H'] = self.pythag(child,target)
+                self.graph[child]['F'] = self.graph[child]['H'] + self.graph[child]['G']
+
+                if self.debug:
                     print("appended child: ", child, " to OL")
                 ol.append(child)
 
             self.iterations += 1
-            if self.debug: 
+            if self.debug:
                 print("iterations: ", self.iterations, ", OL: ", ol)
 
 
-    def return_path(self, CN): 
+    def return_path(self, CN):
         path = []
-        current = CN 
-        while current.parent is not None: 
+        current = CN
+        while self.graph[current]['parent'] is not None:
             path.append(current)
-            current = self.graph[current].parent
-        return path[::-1] # reverse path 
+            current = self.graph[current]['parent']
+        return path[::-1] # reverse path
 
 
-    def pythag(self, child, target): 
+    def pythag(self, child, target):
         # asqured plus bsqured lit
-        return (target[0]-child[0])**2 + (target[1]-child[1])**2 
+        return (target[0]-child[0])**2 + (target[1]-child[1])**2
 
 
-    def consolidate_path(self, path): 
+    def consolidate_path(self, path):
         """ consolidate path for speedrunning"""
-        pass 
+        pass
