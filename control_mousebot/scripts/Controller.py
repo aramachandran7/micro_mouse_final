@@ -75,6 +75,15 @@ class Controller(object):
             print("should be complete graph, saving ... ", self.graph.graph)
             np.save('mazes/graph.npy', self.graph.graph)
 
+    def test_consolidate_nodes(self):
+        target = (8,8)
+        pos = self.pos
+        self.previous_graph = np.load('mazes/graph.npy',allow_pickle='TRUE').item()
+        path_to_center = self.planner.a_star(self.previous_graph, start=pos, target=target)
+        print("path to center: ", path_to_center)
+        optimized_path = self.planner.consolidate_path(path_to_center)
+        print("optimized path: ", optimized_path)
+
     def test_pathplanning(self):
         """test pathplanning code with imported maze graph"""
 
@@ -98,9 +107,8 @@ class Controller(object):
 
         print("At Center.")
 
-    def get_home(self):
+    def run_with_astar(self, target):
         # code for mousebot to reverse track back to starting point
-        target = (0,0)
         pos = self.pos
         path_to_home = self.planner.a_star(self.graph.graph, start=pos, target=target)
         print(path_to_home)
@@ -114,11 +122,10 @@ class Controller(object):
                 if self.step:
                     time.sleep(.3)
             break
-        self.pos = pos 
+        self.pos = pos
         print("Back home.")
 
-    def speedrun(self):
-        target = (8,8)
+    def speedrun(self, target):
         pos = self.pos
         path_to_center = self.planner.a_star(self.graph.graph, start=pos, target=target)
         while not rospy.is_shutdown():
@@ -138,6 +145,7 @@ class Controller(object):
 if __name__ == '__main__':
     control = Controller()
     # control.test_pathplanning()
-    control.run()
-    control.get_home()
-    control.speedrun()
+    # control.run()
+    # control.run_with_astar(target=(0,0))
+    # control.speedrun(target = (8,8))
+    control.test_consolidate_nodes()
