@@ -148,6 +148,7 @@ class DriveStep(object):
 
         self.neato_pos = np.array((pos[0], pos[1],0)) #
         self.prev_45 = (None, None)
+        self.run_distance = 0 # speedrunning straight distances.
 
     def turn(self):
         #print("Turning...")
@@ -201,11 +202,21 @@ class DriveStep(object):
             angvel = 0
 
         motion = Twist()
-        motion.linear.x = self.speed # TODO: maybe add proporaitonal control later
-        # set angular component of motion based on calculated skew
-        motion.angular.z = angvel
 
-        self.speed_pub.publish(motion)
+        if self.speedrun_flag:
+            print("distance traveled: ", self.distance_traveled)
+            motion.linear.x = (self.speed)*math.exp(-1*(math.e*(self.distance_traveled/(1.275*self.run_distance)-.38))**14)
+            print("computed speed: ", motion.linear.x)
+            # set angular component of motion based on calculated skew
+            motion.angular.z = angvel
+            self.speed_pub.publish(motion)
+
+        else:
+            motion.linear.x = self.speed # TODO: maybe add proporaitonal control later
+            # set angular component of motion based on calculated skew
+            motion.angular.z = angvel
+
+            self.speed_pub.publish(motion)
         # print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
 
         if self.front_distance is not None:
@@ -215,10 +226,16 @@ class DriveStep(object):
             else:
                 return self.drive_forwards
         else:
-            if math.fabs(self.unit_length - self.distance_traveled) < self.distance_threshold:
-                return self.idle
-            else:
-                return self.drive_forwards
+            if self.speedrun_flag: # speedrun logic
+                if math.fabs(self.run_distance - self.distance_traveled) < self.distance_threshold:
+                    return self.idle
+                else:
+                    return self.drive_forwards
+            else: # original drivestep logic
+                if math.fabs(self.unit_length - self.distance_traveled) < self.distance_threshold:
+                    return self.idle
+                else:
+                    return self.drive_forwards
 
     def idle(self):
         # print("you shouldn't be here")
@@ -232,9 +249,15 @@ class DriveStep(object):
             return None
         if self.distance_traveled is None:
             return None
-        if math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
-            #print("ignoring walls ahead  ", self.prev_45)
-            return None
+        if self.speedrun_flag:
+            distance_traveled_in_last_unit = self.distance_traveled % self.unit_length
+            if math.fabs(distance_traveled_in_last_unit/self.unit_length) < .4: # don't compute prematurely
+                #print("ignoring walls ahead  ", self.prev_45)
+                return None
+        else:
+            if math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
+                #print("ignoring walls ahead  ", self.prev_45)
+                return None
         curr_45 = self.compute_prev_45()
         if curr_45 != self.prev_45:
             # approximate 'wall ' ahead, you have reached target
@@ -364,9 +387,10 @@ class DriveStep(object):
             self.theta_turned2 = self.help.angle_diff(self.yaw_odom, self.odom_start[2])
             #print("theta_turned2: ", self.theta_turned2)
 
-    def reset(self, direction_to_drive, speed):
+    def reset(self, direction_to_drive, speed, run_distance=1):
         # set global driving conditions based on params
         self.direction_to_drive = direction_to_drive
+        self.run_distance = run_distance
         self.speed = speed
         self.state = self.turn
         self.odom_start = (self.x_odom, self.y_odom, self.yaw_odom)
@@ -381,14 +405,23 @@ class DriveStep(object):
         future_pos = 1,4
         neato_pos = 1,3
         """
+
         heading_vector = np.array(future_pos)-np.array((self.neato_pos[0], self.neato_pos[1]))
         angle_to_turn = self.help.angle_diff(-math.atan2(heading_vector[0], heading_vector[1]), self.neato_pos[2])
 
         npos = self.help.angle_normalize(self.neato_pos[2]+angle_to_turn)
+
+        if self.speedrun_flag:
+            run_distance = math.sqrt((future_pos[1]-self.neato_pos[1])**2 + (future_pos[0]-self.neato_pos[0])**2)
+            print("run_distance:   ", run_distance)
+
         self.neato_pos =  np.array((future_pos[0], future_pos[1], npos)) # %math.pi
 
         print("turning:  ", angle_to_turn)
-        return angle_to_turn
+        if self.speedrun_flag:
+            return angle_to_turn, run_distance
+        else:
+            return angle_to_turn
 
     def return_walls(self, first=False):
         """ returns walls list [] global F B L R """
@@ -421,6 +454,7 @@ class DriveStep(object):
 
     def drive(self, future_pos, speed):
         # initial state of operation upon function call is turn
+        self.speedrun_flag = False
         direction_to_drive = self.compute_direction(future_pos)
         self.reset(direction_to_drive, speed)
 
@@ -435,8 +469,21 @@ class DriveStep(object):
         walls = self.return_walls()
         return walls
 
-    def speed_run(self):
-        pass
+    def drive_speedrun(self, future_pos, speed):
+        # initial state of operation upon function call is turn
+        self.speedrun_flag = True
+        direction_to_drive, run_distance = self.compute_direction(future_pos)
+        print('direction_to_drive: ', direction_to_drive)
+        self.reset(direction_to_drive, speed, run_distance=run_distance)
+
+        while not rospy.is_shutdown() and self.state != self.idle:
+            self.state = self.state()
+
+        # setting final speed
+        motion = Twist()
+        motion.linear.x = 0
+        motion.angular.z = 0
+        self.speed_pub.publish(motion)
 
     def publish_turn(self, vals, starting_index, odom=False):
         if odom: # indicate to /turn_points that you're using odom, publishes empty

@@ -13,7 +13,8 @@ class Controller(object):
     def __init__(self):
 
         # params for driving
-        self.speed = 0.3
+        self.regular_speed = 0.3
+        self.speedrun_speed = 0.4
         unit_length = 0.188
 
         # positions
@@ -47,7 +48,7 @@ class Controller(object):
             self.graph.update_graph(pos, walls)
             next_pos = self.MoveComputer.compute_next_move(self.graph, pos)
             print("Moving to:   ", next_pos)
-            walls = self.driver.drive(next_pos, self.speed) # updates walls, position
+            walls = self.driver.drive(next_pos, self.regular_speed) # updates walls, position
             pos = next_pos
 
             self.nodes_visited[self.pointer] = pos
@@ -75,7 +76,7 @@ class Controller(object):
             print("should be complete graph, saving ... ", self.graph.graph)
             np.save('mazes/graph.npy', self.graph.graph)
 
-    def test_consolidate_nodes(self):
+    def test_speedrun(self):
         target = (8,8)
         pos = self.pos
         self.previous_graph = np.load('mazes/graph.npy',allow_pickle='TRUE').item()
@@ -83,6 +84,21 @@ class Controller(object):
         print("path to center: ", path_to_center)
         optimized_path = self.planner.consolidate_path(path_to_center)
         print("optimized path: ", optimized_path)
+
+        while not rospy.is_shutdown():
+            for position in optimized_path:
+                print('movement!=======================================================================')
+                print("Moving to:   ", position)
+                self.driver.drive_speedrun(position, self.speedrun_speed) # updates walls, position
+                pos = position
+                print(' ')
+                if self.step:
+                    time.sleep(.3)
+            break
+
+        print("At Center.")
+
+
 
     def test_pathplanning(self):
         """test pathplanning code with imported maze graph"""
@@ -98,7 +114,7 @@ class Controller(object):
             for position in path_to_center:
                 print('movement!=======================================================================')
                 print("Moving to:   ", position)
-                walls = self.driver.drive(position, self.speed) # updates walls, position
+                walls = self.driver.drive(position, self.regular_speed) # updates walls, position
                 pos = position
                 print(' ')
                 if self.step:
@@ -116,7 +132,7 @@ class Controller(object):
             for position in path_to_home:
                 print('movement!=======================================================================')
                 print("Moving to:   ", position)
-                walls = self.driver.drive(position, self.speed) # updates walls, position
+                walls = self.driver.drive(position, self.regular_speed) # updates walls, position
                 pos = position
                 print(' ')
                 if self.step:
@@ -132,7 +148,7 @@ class Controller(object):
             for position in path_to_center:
                 print('movement!=======================================================================')
                 print("Moving to:   ", position)
-                walls = self.driver.drive(position, self.speed) # updates walls, position
+                self.driver.drive_speedrun(position, self.speedrun_speed) # updates walls, position
                 pos = position
                 print(' ')
                 if self.step:
@@ -148,4 +164,4 @@ if __name__ == '__main__':
     # control.run()
     # control.run_with_astar(target=(0,0))
     # control.speedrun(target = (8,8))
-    control.test_consolidate_nodes()
+    control.test_speedrun()
