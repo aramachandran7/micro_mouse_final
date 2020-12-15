@@ -66,7 +66,7 @@ class Controller(object):
             if self.step:
                 time.sleep(.3)
 
-        self.graph.update_graph(pos, walls) # final graph update with destination. 
+        self.graph.update_graph(pos, walls) # final graph update with destination.
 
         print("reached center")
         # save dictionary
