@@ -33,7 +33,7 @@ class Controller(object):
 
         self.previous_graph = None # dictionary, not graph object.
 
-        self.save = False # for saving the graph
+        self.save = True # for saving the graph
         self.step = True # steps vs continuous drive
 
 
@@ -51,21 +51,20 @@ class Controller(object):
             pos = next_pos
 
             self.nodes_visited[self.pointer] = pos
-
             counter = 0
             for visited in self.nodes_visited:
                 if visited == self.nodes_visited[self.pointer]:
                     counter += 1
             if counter >=3:
                 print("you're in a back and forth loop, altering MoveComputer2 code")
-            # else:
-            #     MoveComputer.coef = 1.0
 
             self.pointer = (self.pointer+1)%self.len_nodes_visited
             print(' ')
             if self.step:
                 time.sleep(.3)
 
+        # do some final updates
+        self.pos = pos
         self.graph.update_graph(pos, walls) # final graph update with destination.
 
         print("reached center")
@@ -99,28 +98,28 @@ class Controller(object):
 
         print("At Center.")
 
-
     def get_home(self):
         # code for mousebot to reverse track back to starting point
         target = (0,0)
-        path_to_home = self.planner.a_star(self.graph.graph, start=self.pos, target=target)
         pos = self.pos
+        path_to_home = self.planner.a_star(self.graph.graph, start=pos, target=target)
+        print(path_to_home)
         while not rospy.is_shutdown():
             for position in path_to_home:
                 print('movement!=======================================================================')
                 print("Moving to:   ", position)
-                walls = self.driver.drive(position, speed) # updates walls, position
+                walls = self.driver.drive(position, self.speed) # updates walls, position
                 pos = position
                 print(' ')
                 if self.step:
                     time.sleep(.3)
             break
-
+        self.pos = pos 
         print("Back home.")
 
     def speedrun(self):
-        pos = self.pos
         target = (8,8)
+        pos = self.pos
         path_to_center = self.planner.a_star(self.graph.graph, start=pos, target=target)
         while not rospy.is_shutdown():
             for position in path_to_center:
@@ -136,11 +135,9 @@ class Controller(object):
         print("At Center.")
 
 
-
 if __name__ == '__main__':
     control = Controller()
-    control.test_pathplanning()
-    #control.run()
-    #control.get_home()
-    #control.speedrun()
-    # control.run()
+    # control.test_pathplanning()
+    control.run()
+    control.get_home()
+    control.speedrun()

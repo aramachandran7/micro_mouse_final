@@ -3,6 +3,8 @@ Comprobo final project featuring SLAM, maze traversal + path planning, robot dyn
 ##todos
 de-acceleration
 
+### other interesting add-ons
+- dead end detection + avoidance in initial run
 
 ## Week by Week Goals
 
