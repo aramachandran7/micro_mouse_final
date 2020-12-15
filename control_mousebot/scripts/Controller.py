@@ -33,7 +33,8 @@ class Controller(object):
 
         self.previous_graph = None # dictionary, not graph object.
 
-        self.save = True # for saving the graph
+        self.save = False # for saving the graph
+        self.step = True # steps vs continuous drive
 
 
     def run(self):
@@ -62,7 +63,10 @@ class Controller(object):
 
             self.pointer = (self.pointer+1)%self.len_nodes_visited
             print(' ')
-            time.sleep(.3)
+            if self.step:
+                time.sleep(.3)
+
+        self.graph.update_graph(pos, walls) # final graph update with destination. 
 
         print("reached center")
         # save dictionary
@@ -75,7 +79,7 @@ class Controller(object):
     def test_pathplanning(self):
         """test pathplanning code with imported maze graph"""
 
-        target = (8,7)
+        target = (8,8)
         pos = self.pos
         self.previous_graph = np.load('mazes/graph.npy',allow_pickle='TRUE').item()
 
@@ -89,7 +93,8 @@ class Controller(object):
                 walls = self.driver.drive(position, self.speed) # updates walls, position
                 pos = position
                 print(' ')
-                time.sleep(.3)
+                if self.step:
+                    time.sleep(.3)
             break
 
         print("At Center.")
@@ -107,13 +112,35 @@ class Controller(object):
                 walls = self.driver.drive(position, speed) # updates walls, position
                 pos = position
                 print(' ')
-                time.sleep(.3)
+                if self.step:
+                    time.sleep(.3)
             break
-            
+
         print("Back home.")
+
+    def speedrun(self):
+        pos = self.pos
+        target = (8,8)
+        path_to_center = self.planner.a_star(self.graph.graph, start=pos, target=target)
+        while not rospy.is_shutdown():
+            for position in path_to_center:
+                print('movement!=======================================================================')
+                print("Moving to:   ", position)
+                walls = self.driver.drive(position, self.speed) # updates walls, position
+                pos = position
+                print(' ')
+                if self.step:
+                    time.sleep(.3)
+            break
+
+        print("At Center.")
+
 
 
 if __name__ == '__main__':
     control = Controller()
     control.test_pathplanning()
+    #control.run()
+    #control.get_home()
+    #control.speedrun()
     # control.run()

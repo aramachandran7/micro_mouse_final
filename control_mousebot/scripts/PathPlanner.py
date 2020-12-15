@@ -24,7 +24,7 @@ class PathPlanner(object):
         self.graph = None
         self.values = None
         self.iterations = 0
-        self.max_iterations = maze_sl**2 / 2
+        self.max_iterations = maze_sl**2
         self.debug = True
 
 
@@ -50,7 +50,8 @@ class PathPlanner(object):
         closed_list = [] # closed_listose_listosed list
         open_list.append(start)
         while len(open_list)>0:
-
+            print(' ')
+            print("=================evaluating new CN====================")
             # set current node as lowest f in the open list | start at top of priority queue
             lowest_f = 10000
             for i, node in enumerate(open_list):
@@ -73,16 +74,16 @@ class PathPlanner(object):
 
             # generate all 8 children nodes surrounding CN , walkt through
             directions = self.graph[CN]["conns"]
-            print('walking through possible directions %s for CN: %s' %(directions, CN))
+            print('CN %s has directions: %s' %(CN, directions))
 
             for child in directions: # CN is parent
                 # ensure child is in graph (if it wasn't visited, it doesn't matter)
                 if child not in self.graph.keys():
-                    print('This child was never visited by the neato, continuing: ', child)
+                    print('failed - ', child, ' - never visited by neato')
                     continue
                 # ensure child isn't on the closed_list
                 if child in closed_list:
-                    print("was in closed_list: child ", child, " of parent: ", CN)
+                    print("failed - ", child, " - in closed_list.")
                     continue
 
                 # compute f g h
@@ -94,21 +95,22 @@ class PathPlanner(object):
 
                 self.graph[child]['parent'] = CN
                 self.graph[child]['H'] = self.heuristic(child,target)
-                print("Computed H %s for direction/child %s" % (self.graph[child]['H'], child))
+                # print("Computed H %s for direction/child %s" % (self.graph[child]['H'], child))
                 self.graph[child]['F'] = self.graph[child]['H'] + self.graph[child]['G']
 
                 if self.debug:
-                    print("appended child: ", child, " to open_list")
+                    print("appended - ", child,)
                 # the child/direction node is ready to add to the priority queue once you've now computed its f g h and parent and
                 # checked for redundancies in the closed_list and open_list
                 open_list.append(child)
 
             self.iterations += 1
             if self.debug:
-                print("iterations: ", self.iterations, ", open_list/priority queue: ", open_list, "closed list", closed_list)
+                print("iterations: ", self.iterations)
 
         # passed through entire while loop, open list emptied early. Not good.
-        print("Open list emptied early, failure likely.")
+        print(' ')
+        print("Open list emptied early!! failure likely.")
         return self.return_path(CN)
 
 
