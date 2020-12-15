@@ -102,4 +102,4 @@ class Controller(object):
 
 if __name__ == '__main__':
     control = Controller()
-    control.test_pathplanning()   #test_pathplanning()
+    control.run()   #test_pathplanning()
