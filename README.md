@@ -39,6 +39,11 @@ scanner.scan_graph(graph)
 computer.compute_next_move()
 driver.drive()
 ```
+Main Goal/background:
+
+The goal of this project was to create a robot that could complete the micromouse competition. We set out to write an algorithm that could guide our (designed) robot through a maze using SLAM and pathfinding. The competition is based on the 
+
+
 
 1.5)
 path plannign wtf
