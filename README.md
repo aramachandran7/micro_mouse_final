@@ -1,7 +1,7 @@
 # micro_mouse_final
 Comprobo final project featuring SLAM, maze traversal + path planning, robot dynamics with Gazebo &amp; ROS
 
-## project docs @ [http://gammafla.me/micro_mouse_final/](project website). 
+## project docs @ [project website](http://gammafla.me/micro_mouse_final/). 
 
 At the end of the project your website should include the following information:
 
