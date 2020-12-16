@@ -1,6 +1,17 @@
 ## Welcome to GitHub Pages
 
-Yo waht up dawg
+At the end of the project your website should include the following information:
+
+Show it off: Describe the main idea of your project. What does your system do? Why would you want to do this? What are the major components to your system and how do they fit together? Hopefully you will have some cool videos to put in the website by this point.
+
+System architecture: In detail describe each component of your project. Make sure to touch upon both code structure as well as algorithms.
+
+
+
+
+
+## Guide 
+
 You can use the [editor on GitHub](https://github.com/aramachandran7/micro_mouse_final/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
