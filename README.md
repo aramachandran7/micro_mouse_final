@@ -1,6 +1,17 @@
 # micro_mouse_final
 Comprobo final project featuring SLAM, maze traversal + path planning, robot dynamics with Gazebo &amp; ROS
-##todos
+
+## project docs @ [http://gammafla.me/micro_mouse_final/](project website). 
+
+At the end of the project your website should include the following information:
+
+Show it off: Describe the main idea of your project. What does your system do? Why would you want to do this? What are the major components to your system and how do they fit together? Hopefully you will have some cool videos to put in the website by this point.
+
+System architecture: In detail describe each component of your project. Make sure to touch upon both code structure as well as algorithms.
+
+
+
+##Junk | todos
 de-acceleration
 
 ### other interesting add-ons
