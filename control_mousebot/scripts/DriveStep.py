@@ -204,9 +204,12 @@ class DriveStep(object):
         motion = Twist()
 
         if self.speedrun_flag:
-            print("distance traveled: ", self.distance_traveled)
-            motion.linear.x = (self.speed)*math.exp(-1*(math.e*(self.distance_traveled/(1.275*self.run_distance)-.38))**14)
-            print("computed speed: ", motion.linear.x)
+            # print("distance traveled: ", self.distance_traveled)
+            # print("current x,y: ", self.x_odom, self.y_odom, "odom_start x,y: ", self.odom_start[0], self.odom_start[1])
+            run_units = round(self.run_distance/ self.unit_length)
+            units_traveled = self.distance_traveled/self.unit_length
+            motion.linear.x = (self.speed)*math.exp(-1*(0.97*math.e*(units_traveled/(1.25*run_units)-.38))**(2*run_units))
+            print("computed speed: ", motion.linear.x, "odom completion", self.distance_traveled/self.run_distance)
             # set angular component of motion based on calculated skew
             motion.angular.z = angvel
             self.speed_pub.publish(motion)
@@ -227,7 +230,7 @@ class DriveStep(object):
                 return self.drive_forwards
         else:
             if self.speedrun_flag: # speedrun logic
-                if math.fabs(self.run_distance - self.distance_traveled) < self.distance_threshold:
+                if (math.fabs(self.run_distance - self.distance_traveled) < self.distance_threshold) or motion.linear.x < 0.005:
                     return self.idle
                 else:
                     return self.drive_forwards
@@ -249,13 +252,13 @@ class DriveStep(object):
             return None
         if self.distance_traveled is None:
             return None
-        if self.speedrun_flag:
-            distance_traveled_in_last_unit = self.distance_traveled % self.unit_length
-            if math.fabs(distance_traveled_in_last_unit/self.unit_length) < .4: # don't compute prematurely
-                #print("ignoring walls ahead  ", self.prev_45)
-                return None
-        else:
-            if math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
+        # if self.speedrun_flag:
+        #
+        #     distance_traveled_in_last_unit = self.distance_traveled % self.unit_length
+        #     if math.fabs(distance_traveled_in_last_unit/self.unit_length) < .4: # don't compute prematurely
+        #         #print("ignoring walls ahead  ", self.prev_45)
+        #         return None
+        if not self.speedrun_flag and math.fabs(self.distance_traveled/self.unit_length) < .4: # don't compute prematurely
                 #print("ignoring walls ahead  ", self.prev_45)
                 return None
         curr_45 = self.compute_prev_45()
@@ -371,18 +374,27 @@ class DriveStep(object):
         if self.walls["F"]:
             # you have a good front wall! Check values around the center
             self.front_distance = self.compute_skew(0)[0] # get distance via linear regression
-        else:
+        elif not self.speedrun_flag:
             # set front wall distance based on keypoint measurment
             self.front_distance = self.compute_keypoints() # called (and reset) on every lidar scan
+        else:
+            # while speedrunning, begin computing keypoints if you're in the final square of your speedrun
+            # if math.fabs(self.run_distance - self.distance_traveled)<1.5*self.unit_length:
+            if math.fabs(self.distance_traveled/self.run_distance)>(.93-(.6*self.unit_length/self.run_distance)):
+
+                self.front_distance = self.compute_keypoints()
+            else:
+                self.front_distance = None
 
         self.prev_45 = self.compute_prev_45() # set 45 degree angles
 
     def odom_recieved(self, msg):
         """ callback for /odom"""
         self.x_odom, self.y_odom, self.yaw_odom = self.help.convert_pose_to_xy_and_theta(msg.pose.pose)
-        # print(self.x_odom, self.y_odom)
+        #print("getting odom", self.x_odom, self.y_odom)
         if self.odom_start is not None: # compute distance traveled in the direction you care about.
             self.distance_traveled = math.sqrt((self.y_odom - self.odom_start[1])**2 + (self.x_odom - self.odom_start[0])**2)
+            # print("getting odom, dt: ", self.distance_traveled)
             # compute theta turned based off original heading.
             self.theta_turned2 = self.help.angle_diff(self.yaw_odom, self.odom_start[2])
             #print("theta_turned2: ", self.theta_turned2)
@@ -403,7 +415,7 @@ class DriveStep(object):
         compute direction_to_drive and compute new self.neato_pos
         i.e.:
         future_pos = 1,4
-        neato_pos = 1,3
+        neato_pos = 1,3,
         """
 
         heading_vector = np.array(future_pos)-np.array((self.neato_pos[0], self.neato_pos[1]))
@@ -412,7 +424,7 @@ class DriveStep(object):
         npos = self.help.angle_normalize(self.neato_pos[2]+angle_to_turn)
 
         if self.speedrun_flag:
-            run_distance = math.sqrt((future_pos[1]-self.neato_pos[1])**2 + (future_pos[0]-self.neato_pos[0])**2)
+            run_distance = math.sqrt((future_pos[1]-self.neato_pos[1])**2 + (future_pos[0]-self.neato_pos[0])**2) * self.unit_length
             print("run_distance:   ", run_distance)
 
         self.neato_pos =  np.array((future_pos[0], future_pos[1], npos)) # %math.pi

@@ -14,7 +14,7 @@ class Controller(object):
 
         # params for driving
         self.regular_speed = 0.3
-        self.speedrun_speed = 0.4
+        self.speedrun_speed = .8
         unit_length = 0.188
 
         # positions
@@ -34,7 +34,7 @@ class Controller(object):
 
         self.previous_graph = None # dictionary, not graph object.
 
-        self.save = True # for saving the graph
+        self.save = False # for saving the graph
         self.step = True # steps vs continuous drive
 
 
@@ -97,6 +97,7 @@ class Controller(object):
             break
 
         print("At Center.")
+        self.pos = pos
 
 
 
@@ -161,7 +162,7 @@ class Controller(object):
 if __name__ == '__main__':
     control = Controller()
     # control.test_pathplanning()
-    control.run()
+    #control.run()
     # control.run_with_astar(target=(0,0))
     # control.speedrun(target = (8,8))
-    #control.test_speedrun()
+    control.test_speedrun()
