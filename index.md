@@ -68,12 +68,12 @@ We perform a depth-limited recursive depth-first search for every direction in t
 ### PathPlanner (our custom implementation of A*)
 The `PathPlanner` conssits of 2 components
 - The `A*` algorithm implemented in python to interface with our graph and compute an optimized route between two unique nodes.
-- A route optimization function `consolidate_path` that turns a list of nodes into a list of 'end nodes', which helps our `speedrun` function understand how long its next straightway stretch.     
+- A route optimization function `consolidate_path` that turns a list of nodes into a list of 'end nodes', which helps our `speedrun` function understand how long its next straightaway stretch.     
 
 Our implementation of A Star uses the F, G, and H heuristics, walking through and adding to a cost-sorted priority queue until it empties the queue or finds the target node. We use Euclidean distance as our heuristic and of course, children are limited by connected nodes (portions of the maze the bot can traverse) and nodes actually in the graph (portions of the maze the bot *did* traverse during Maze Solving).
 
 ### A special shout-out to `speed_run`!
-The `speed_run` functionality of our `DriveStep` API takes the optimized route generated from the `PathPlanner`, and  uses a custom proportional control to set bot speed as it drives down long straightways in the route. 
+The `speed_run` functionality of our `DriveStep` API takes the optimized route generated from the `PathPlanner`, and  uses a custom proportional control to set bot speed as it drives down long straightaways in the route. 
 
 Unlike in the pro micromouse challenge, our turns are still seperate from driving forwards (and funciton identically to our turns during Maze Solving), we no longer drive 'step by step' during straight portions of the robot path. The bot relies heaviliy on odometry to drive down long stretches and can consistently pick up to speeds up to 3x higher than it would when first solving the maze.   
 
@@ -101,7 +101,7 @@ The first aspect of our mapping run that could use improvement is the discrete s
 The speed run could be further improved by combining the turning and driving function. Turning while continuing to drive forward would remove the need to stop entirely. This would both decrease run time and reduce error from jerking.
 
 
-Looking at the path planning, a future improvement would be to change how we define the fastest path. Rather than necassarily optimizing for the shortest overall path from point A to point B, we could alter our A star algorithm to find paths with more long straightways, that would be faster in the speed run. 
+Looking at the path planning, a future improvement would be to change how we define the fastest path. Rather than necassarily optimizing for the shortest overall path from point A to point B, we could alter our A star algorithm to find paths with more long straightaways, that would be faster in the speed run. 
 
 Spending more time to fine tune our MoveComputer's confidence 
 
