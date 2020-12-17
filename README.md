@@ -82,11 +82,20 @@ The mousebot model for this project was uniquely designed for the gazebo maze. W
 
 (this section could use a revisit)
 
-## Reflection & future improvements
-In all, we need to smoke some weed.
-haha we can hit up paul
+### Reflection & future improvements
+The first aspect of our mapping run that could use improvement is the discrete stepping at each unit square. This is a significant factor in our final run time and removing this pause between movements, such as we did in the speed_run, would optimize the longest part of our run. Looking at the path planning, a future improvement would be to change how we define the fastest path. Rather than the shortest step distance, finding a path with more long straight paths would be faster in the speed run. The speed run could be further improved by combining the turning and driving function. Turning while continuing to drive forward would remove the need to stop entirely. This would both decrease run time and reduce error from jerking.
+
+Outside of our algorith, we would like to test our mousebot in a few different mazes. Our code likely has many parts that work for this maze alone. Testing other mazes is a necessity for robust move computation and pathplanning.
+
+### Unexpected challenges
+-
 
 
+#todo
+-Make challenges section
+-Make low level stuff
+-Make motivation section
+-Work on Visuals
 
 #Junk | todos
 de-acceleration

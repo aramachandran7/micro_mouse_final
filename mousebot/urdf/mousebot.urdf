@@ -251,8 +251,8 @@
       <updateRate>100</updateRate>
       <leftJoint>L_wheel_cont</leftJoint>
       <rightJoint>R_wheel_cont</rightJoint>
-      <wheelSeparation>0.088</wheelSeparation>
-      <wheelDiameter>0.0310</wheelDiameter>
+      <wheelSeparation>0.092</wheelSeparation>
+      <wheelDiameter>0.0325</wheelDiameter>
       <torque>20</torque>
       <commandTopic>cmd_vel</commandTopic>
       <odometryTopic>odom</odometryTopic>
