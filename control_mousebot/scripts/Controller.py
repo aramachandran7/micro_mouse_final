@@ -14,8 +14,9 @@ class Controller(object):
 
         # params for driving
         self.regular_speed = 0.3
-        self.speedrun_speed = .8
-        unit_length = 0.188
+        self.speedrun_speed = 1.3
+        #unit_length = 0.195    #For regular runs
+        unit_length = 0.185     #For speed runs
 
         # positions
         self.pos = (0,0)
@@ -144,9 +145,14 @@ class Controller(object):
 
     def speedrun(self, target):
         pos = self.pos
-        path_to_center = self.planner.a_star(self.graph.graph, start=pos, target=target)
+        self.previous_graph = np.load('mazes/graph.npy',allow_pickle='TRUE').item()
+        path_to_center = self.planner.a_star(self.previous_graph, start=pos, target=target)
+        print("path to center: ", path_to_center)
+        optimized_path = self.planner.consolidate_path(path_to_center)
+        print("optimized path: ", optimized_path)
+
         while not rospy.is_shutdown():
-            for position in path_to_center:
+            for position in optimized_path:
                 print('movement!=======================================================================')
                 print("Moving to:   ", position)
                 self.driver.drive_speedrun(position, self.speedrun_speed) # updates walls, position
@@ -156,13 +162,13 @@ class Controller(object):
                     time.sleep(.3)
             break
 
-        print("At Center.")
+        print("At target.")
 
 
 if __name__ == '__main__':
     control = Controller()
     # control.test_pathplanning()
-    #control.run()
-    # control.run_with_astar(target=(0,0))
-    # control.speedrun(target = (8,8))
-    control.test_speedrun()
+    #ontrol.run()
+    #control.run_with_astar(target=(0,0))
+    control.speedrun(target = (8,8))
+    # control.test_speedrun()

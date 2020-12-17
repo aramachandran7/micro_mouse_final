@@ -208,7 +208,7 @@ class DriveStep(object):
             # print("current x,y: ", self.x_odom, self.y_odom, "odom_start x,y: ", self.odom_start[0], self.odom_start[1])
             run_units = round(self.run_distance/ self.unit_length)
             units_traveled = self.distance_traveled/self.unit_length
-            motion.linear.x = (self.speed)*math.exp(-1*(0.97*math.e*(units_traveled/(1.25*run_units)-.38))**(2*run_units))
+            motion.linear.x = (self.speed)*math.exp(-3*((2*units_traveled/run_units-1)**(4*run_units)))
             print("computed speed: ", motion.linear.x, "odom completion", self.distance_traveled/self.run_distance)
             # set angular component of motion based on calculated skew
             motion.angular.z = angvel
@@ -262,6 +262,7 @@ class DriveStep(object):
                 #print("ignoring walls ahead  ", self.prev_45)
                 return None
         curr_45 = self.compute_prev_45()
+        print("checking keypoints")
         if curr_45 != self.prev_45:
             # approximate 'wall ' ahead, you have reached target
             #print("---FOUND 'WALL' AHEAD,--- previous 45, 325: ", self.prev_45, " new 45, 325: ", curr_45)
@@ -380,7 +381,7 @@ class DriveStep(object):
         else:
             # while speedrunning, begin computing keypoints if you're in the final square of your speedrun
             # if math.fabs(self.run_distance - self.distance_traveled)<1.5*self.unit_length:
-            if math.fabs(self.distance_traveled/self.run_distance)>(.93-(.6*self.unit_length/self.run_distance)):
+            if math.fabs(self.distance_traveled/self.run_distance)>(1-(.6*self.unit_length/self.run_distance)):
 
                 self.front_distance = self.compute_keypoints()
             else:
