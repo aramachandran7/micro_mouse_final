@@ -161,7 +161,7 @@ class Controller(object):
 if __name__ == '__main__':
     control = Controller()
     # control.test_pathplanning()
-    # control.run()
+    control.run()
     # control.run_with_astar(target=(0,0))
     # control.speedrun(target = (8,8))
-    control.test_speedrun()
+    #control.test_speedrun()
