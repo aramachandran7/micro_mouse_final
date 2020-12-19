@@ -16,7 +16,7 @@ class Controller(object):
         self.regular_speed = 0.3
         self.speedrun_speed = 1.3
         #unit_length = 0.195    #For regular runs
-        unit_length = 0.185     #For speed runs
+        unit_length = 0.188  #For speed runs
 
         # positions
         self.pos = (0,0)
@@ -36,8 +36,39 @@ class Controller(object):
         self.previous_graph = None # dictionary, not graph object.
 
         self.save = False # for saving the graph
-        self.step = True # steps vs continuous drive
+        self.step = False # steps vs continuous drive
 
+    def run_advanced(self): 
+        """ blocking code while loop for mousebot reach center """
+        walls = self.driver.return_walls(first=True) # compute first walls before movement
+        print('walls returned first: ', walls)
+        pos = self.pos
+        while (pos not in self.target_list) and not rospy.is_shutdown():
+            print('movement!=======================================================================')
+            self.graph.update_graph(pos, walls)
+            next_pos = self.MoveComputer.compute_next_move(self.graph, pos)
+            print("Moving to:   ", next_pos)
+            walls = self.driver.drive_advanced(next_pos, self.regular_speed) # updates walls, position
+            pos = next_pos
+
+            # self.nodes_visited[self.pointer] = pos
+            # counter = 0
+            # for visited in self.nodes_visited:
+            #     if visited == self.nodes_visited[self.pointer]:
+            #         counter += 1
+            # if counter >=3:
+            #     print("you're in a back and forth loop, altering MoveComputer2 code")
+
+            # self.pointer = (self.pointer+1)%self.len_nodes_visited
+            print(' ')
+            if self.step:
+                time.sleep(.3)
+
+        # do some final updates
+        self.pos = pos
+        self.graph.update_graph(pos, walls) # final graph update with destination.
+
+        print("reached center")
 
     def run(self):
         """ blocking code while loop for mousebot reach center """
@@ -99,8 +130,6 @@ class Controller(object):
 
         print("At Center.")
         self.pos = pos
-
-
 
     def test_pathplanning(self):
         """test pathplanning code with imported maze graph"""
@@ -168,7 +197,9 @@ class Controller(object):
 if __name__ == '__main__':
     control = Controller()
     # control.test_pathplanning()
-    #ontrol.run()
+    control.run()
+    # control.run_advanced()
+
     #control.run_with_astar(target=(0,0))
-    control.speedrun(target = (8,8))
+    # control.speedrun(target = (8,8))
     # control.test_speedrun()

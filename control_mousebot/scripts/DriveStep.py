@@ -150,6 +150,11 @@ class DriveStep(object):
         self.prev_45 = (None, None)
         self.run_distance = 0 # speedrunning straight distances.
 
+        # advanced drive mechanics 
+        self.d2pc = 0
+        self.to_drive = self.unit_length
+        self.turn_radius = .2
+
     def turn(self):
         #print("Turning...")
         if self.direction_to_drive == 0.0: # if you're straight up forwards?
@@ -174,6 +179,121 @@ class DriveStep(object):
             else:
                 self.speed_pub.publish(motion)
                 return self.turn
+
+    def turn_advanced(self): 
+        if self.direction_to_drive == 0.0: # if you're straight up forwards?
+            return self.drive_forwards
+        elif self.direction_to_drive < (3/4* math.pi): 
+            # compute angle to turn (closest rotation angle from a to b)
+            completion_percent = (0.9)
+            if (math.fabs(self.theta_turned2/self.direction_to_drive) < completion_percent) or self.skew == None: # maybe 85
+                angle_to_turn = self.direction_to_drive - self.theta_turned2
+                self.publish_turn([], 0, odom=True) # indicate to /turn_points that you're using odom
+                # print("Using encoder: ", angle_to_turn)
+            elif (self.skew is not None):
+                angle_to_turn = -self.skew[1]
+                #print("angle_to_turn_lidar:", angle_to_turn, "from: ", self.skew[2], "rValue: ", self.r_value)
+
+            motion = Twist()
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp(-3*angle_to_turn))-self.max_turn_speed
+            motion.linear.x = self.speed/2
+            # print("Turning_advanced | a2t: ", angle_to_turn)
+            if ((not self.walls['L']) or (not self.walls['R'])) and ((self.unit_length-self.distance_traveled) < .45*self.unit_length): 
+                self.d2pc = self.unit_length-self.distance_traveled
+                # self.a2pc = self.
+                print("-- (T) In the early scan Zone--", self.d2pc)
+
+            if math.fabs(angle_to_turn) < self.turn_cutoff:
+                return self.drive_forwards_advanced
+            else:
+                self.speed_pub.publish(motion)
+                return self.turn_advanced
+        
+        else: 
+            # compute angle to turn (closest rotation angle from a to b)
+            completion_percent = (0.9)
+            if (math.fabs(self.theta_turned2/self.direction_to_drive) < completion_percent) or self.skew == None: # maybe 85
+                angle_to_turn = self.direction_to_drive - self.theta_turned2
+                self.publish_turn([], 0, odom=True) # indicate to /turn_points that you're using odom
+                # print("Using encoder: ", angle_to_turn)
+            elif (self.skew is not None):
+                angle_to_turn = -self.skew[1]
+                #print("angle_to_turn_lidar:", angle_to_turn, "from: ", self.skew[2], "rValue: ", self.r_value)
+
+            motion = Twist()
+            motion.angular.z = self.max_turn_speed*2/(1+math.exp(-3*angle_to_turn))-self.max_turn_speed
+            motion.linear.x = 0
+
+            if math.fabs(angle_to_turn) < self.turn_cutoff:
+                return self.drive_forwards_advanced
+            else:
+                self.speed_pub.publish(motion)
+                return self.turn_advanced
+
+    def drive_forwards_advanced(self): 
+        # print("Driving_Advanced...")
+        if self.skew != None:
+            # If we have at least one wall
+            if self.skew[2] == 90:
+                sideskew = self.skew[0] - 0.084
+            elif self.skew[2] == 270:
+                sideskew = 0.084 - self.skew[0]
+            else:
+                sideskew = 0
+            angle_correction = self.max_turn_speed*2/(1+math.exp(10*self.skew[1])) - self.max_turn_speed
+            drift_correction = self.max_turn_speed*2/(1+math.exp(-25*sideskew)) - self.max_turn_speed
+
+            angvel = (angle_correction + drift_correction)/2
+        else: # if there's no walls and you're fucked
+            # print('You have no walls to go off of! Using only odom for movement')
+            angvel = 0
+
+        motion = Twist()
+
+        if self.speedrun_flag:
+            # print("distance traveled: ", self.distance_traveled)
+            # print("current x,y: ", self.x_odom, self.y_odom, "odom_start x,y: ", self.odom_start[0], self.odom_start[1])
+            run_units = round(self.run_distance/ self.unit_length)
+            units_traveled = self.distance_traveled/self.unit_length
+            motion.linear.x = (self.speed)*math.exp(-3*((2*units_traveled/run_units-1)**(4*run_units)))
+            print("computed speed: ", motion.linear.x, "odom completion", self.distance_traveled/self.run_distance)
+            # set angular component of motion based on calculated skew
+            motion.angular.z = angvel
+            self.speed_pub.publish(motion)
+
+        else:
+            motion.linear.x = self.speed 
+            # set angular component of motion based on calculated skew
+            motion.angular.z = angvel
+
+            self.speed_pub.publish(motion)
+        # print("distance traveled: ", self.distance_traveled, " , self.unit_length: " , self.unit_length)
+
+        # rely on odom for early action
+        if ((not self.walls['L']) or (not self.walls['R'])) and ((self.unit_length-self.distance_traveled) < .4*self.unit_length): 
+            self.d2pc = self.unit_length-self.distance_traveled
+            print("--(D) In the early scan Zone--", self.d2pc)
+            
+            # return self.idle
+
+        if self.front_distance is not None: # TODO increase front distance range for advanced with boolean 
+            # control logic if there is a front wall to correct off of
+            if math.fabs(self.front_distance - self.path_center) < self.distance_threshold: # completed unit
+                self.d2pc = 0
+                return self.idle
+            else: 
+                return self.drive_forwards_advanced
+        else:
+            if self.speedrun_flag: # speedrun logic
+                if (math.fabs(self.run_distance - self.distance_traveled) < self.distance_threshold) or motion.linear.x < 0.005:
+                    return self.idle
+                else:
+                    return self.drive_forwards_advanced
+            else: # original drivestep logic
+                if math.fabs(self.to_drive - self.distance_traveled) < self.distance_threshold:
+                    return self.idle
+                else:
+                    return self.drive_forwards_advanced
 
     def drive_forwards(self):
         """
@@ -262,7 +382,7 @@ class DriveStep(object):
                 #print("ignoring walls ahead  ", self.prev_45)
                 return None
         curr_45 = self.compute_prev_45()
-        print("checking keypoints")
+        # print("checking keypoints")
         if curr_45 != self.prev_45:
             # approximate 'wall ' ahead, you have reached target
             #print("---FOUND 'WALL' AHEAD,--- previous 45, 325: ", self.prev_45, " new 45, 325: ", curr_45)
@@ -464,6 +584,29 @@ class DriveStep(object):
                 print("left")   # Facing Left
                 walls = [self.walls["R"], self.walls["L"], self.walls["F"], False]
         return walls
+
+
+    def drive_advanced(self, future_pos, speed): 
+        # initial state of operation upon function call is turn
+        self.speedrun_flag = False
+        direction_to_drive = self.compute_direction(future_pos)
+        self.reset(direction_to_drive, speed)
+
+        # more reset functionality 
+        self.state = self.turn_advanced # start off with a different state machine + flow
+        self.to_drive = self.unit_length + self.d2pc
+
+        while not rospy.is_shutdown() and self.state != self.idle:
+            self.state = self.state()
+
+        # setting final speed
+        motion = Twist()
+        motion.linear.x = 0
+        motion.angular.z = 0
+        self.speed_pub.publish(motion)
+        walls = self.return_walls()
+        return (walls) 
+
 
     def drive(self, future_pos, speed):
         # initial state of operation upon function call is turn

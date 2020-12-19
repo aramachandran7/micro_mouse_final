@@ -23,7 +23,7 @@ class MoveComputer2(object):
         self.pos = None
         self.confidences = []
         self.target = np.array((7.5, 7.5)) # maze target
-        self.debug = True
+        self.debug = False
         self.debug_rec = False
         self.coef = 1.0
         self.recursion_limit = 80
@@ -64,7 +64,8 @@ class MoveComputer2(object):
                     num_to_unknown, location = result
                     distance_to_center = math.sqrt((location[1]-self.target[1])**2 + (location[0]-self.target[0])**2)/math.sqrt(2*(7.5**2)) # size matters; smaller is better
                     num_to_unknown /= self.recursion_limit
-                    print("distance to center: ", distance_to_center, "num to unknown: ", num_to_unknown)
+                    if self.debug: 
+                        print("distance to center: ", distance_to_center, "num to unknown: ", num_to_unknown)
                     self.confidences.append(1/(distance_to_center*(1.0+num_to_unknown*6))) # TODO: fix computation  50 WORKED!!
                 else:
                     self.confidences.append(0.0) # there is only a dead end in this direction
