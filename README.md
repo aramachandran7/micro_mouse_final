@@ -1,7 +1,7 @@
 # micro_mouse_final
 Comprobo final project featuring SLAM, maze traversal + path planning, robot dynamics with Gazebo &amp; ROS
 
-## ALL Project docs @ [project website](http://gammafla.me/micro_mouse_final/).
+## ALL Project docs @ [GH-Pages Branch](https://github.com/aramachandran7/micro_mouse_final/tree/gh-pages).
 
 ### Checkout the videos below - speedrun & full challenge completion!
 
