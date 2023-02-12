@@ -5,6 +5,7 @@ The goal of this project was to design and program a robot that could complete t
 
 The project involved graph theory & recursive algorithm design, high speed robot motion control, discrete SLAM with LIDAR & odometry (so not really slam, lol), and pathplanning! `Great Success!`
 
+## *watch the youtube videos below by clicking on the images!!*
 
 [![Speedrun](https://img.youtube.com/vi/Khu0GxKtttg/0.jpg)](https://www.youtube.com/watch?v=Khu0GxKtttg )
 *Speedrun!*
